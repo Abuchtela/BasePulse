@@ -1,7 +1,8 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { getDeployedTokens, getTrendAnalysis, getTreasuryBalance, getSocialInteractions } from "./db";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -17,12 +18,29 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  basepulse: router({
+    tokens: router({
+      list: publicProcedure.query(async () => {
+        return getDeployedTokens(50);
+      }),
+    }),
+    trends: router({
+      recent: publicProcedure.query(async () => {
+        return getTrendAnalysis(20);
+      }),
+    }),
+    treasury: router({
+      balance: publicProcedure.query(async () => {
+        const balance = await getTreasuryBalance();
+        return { balance };
+      }),
+    }),
+    social: router({
+      interactions: publicProcedure.query(async () => {
+        return getSocialInteractions(50);
+      }),
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
