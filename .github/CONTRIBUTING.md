@@ -7,8 +7,8 @@ Thank you for your interest in contributing to BasePulse! This document provides
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/basepulse-agent.git
-   cd basepulse-agent
+   git clone https://github.com/YOUR_USERNAME/BasePulse.git
+   cd BasePulse
    ```
 3. **Create a feature branch**:
    ```bash
