@@ -12,7 +12,7 @@ BasePulse is an autonomous agent system that monitors social trends on X and Far
 The trend monitoring component continuously analyzes social media posts using LLM-powered sentiment analysis. It extracts trending themes, calculates sentiment scores, and validates trends against on-chain metrics.
 
 **Key Functions:**
-- `analyzeSocialTrends()` - Uses Claude to extract themes and sentiment from social posts
+- `analyzeSocialTrends()` - Uses Gemini 2.5 Flash via Manus Forge API to extract themes and sentiment from social posts
 - `validateTrendThreshold()` - Checks if trend meets deployment criteria
 - `storeTrendAnalysis()` - Persists trend data to database
 - `generateTokenMetadata()` - Creates token name, symbol, and description from trend
@@ -152,14 +152,12 @@ CREATE TABLE social_interactions (
 
 #### Token Management
 - `basepulse.tokens.list` - Get all deployed tokens
-- `basepulse.tokens.getById` - Get specific token details
 
 #### Trend Analysis
 - `basepulse.trends.recent` - Get recent trend analysis
 
 #### Treasury
 - `basepulse.treasury.balance` - Get current treasury balance
-- `basepulse.treasury.transactions` - Get transaction history
 
 #### Social
 - `basepulse.social.interactions` - Get community interactions
@@ -185,11 +183,9 @@ AGENT_PRIVATE_KEY=0x...              # Private key for token deployment
 # Database
 DATABASE_URL=mysql://...             # MySQL connection string
 
-# LLM
-OPENAI_API_KEY=sk-...                # For trend analysis
-
-# Notifications
-BUILT_IN_FORGE_API_KEY=...           # For owner notifications
+# LLM & Notifications (Manus Forge API)
+BUILT_IN_FORGE_API_KEY=...           # For LLM trend analysis and owner notifications
+BUILT_IN_FORGE_API_URL=...           # Manus Forge API base URL (optional, defaults to forge.manus.im)
 
 # Social Media (Optional for future integration)
 TWITTER_API_KEY=...
