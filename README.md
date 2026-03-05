@@ -70,6 +70,7 @@ This creates a self-sustaining economic loop where the agent generates value wit
 # Clone repository
 git clone https://github.com/Abuchtela/BasePulse.git
 cd BasePulse
+cd basepulse-agent
 
 # Install dependencies
 pnpm install
