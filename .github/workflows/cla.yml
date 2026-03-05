@@ -1,0 +1,27 @@
+name: CLA
+
+# pull_request_target is used (instead of pull_request) so the workflow runs
+# in the context of the base repo and has the write permissions needed to post
+# commit statuses. No PR code is checked out, so there is no security risk.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Set CLA status to success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: 'success',
+              context: 'cla/google',
+              description: 'CLA requirement has been removed',
+            });
