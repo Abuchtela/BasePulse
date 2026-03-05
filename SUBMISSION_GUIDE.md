@@ -267,8 +267,8 @@ The agent runs a continuous autonomous loop that:
 - README: [README.md](./README.md)
 
 **GitHub Repository**:
-- Code: https://github.com/basepulse/agent
-- Issues: https://github.com/basepulse/agent/issues
+- Code: https://github.com/Abuchtela/BasePulse
+- Issues: https://github.com/Abuchtela/BasePulse/issues
 
 ## Contact & Support
 
