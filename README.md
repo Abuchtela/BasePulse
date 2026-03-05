@@ -17,7 +17,7 @@ BasePulse is a fully autonomous agent that monitors social trends on X and Farca
 BasePulse consists of three main components:
 
 ### 1. **Trend Monitor Skill**
-Analyzes social media posts using Claude AI to extract trending themes and sentiment scores. Validates trends against on-chain volume data before triggering deployments.
+Analyzes social media posts using Gemini 2.5 Flash via Manus Forge API to extract trending themes and sentiment scores. Validates trends against on-chain volume data before triggering deployments.
 
 ### 2. **Token Deployer Module**
 Handles autonomous ERC20 token deployment on Base using the Clanker SDK. Manages wallet interactions, transaction execution, and treasury accounting.
@@ -51,8 +51,8 @@ This creates a self-sustaining economic loop where the agent generates value wit
 - **Backend**: Express 4 + tRPC 11
 - **Database**: MySQL with Drizzle ORM
 - **Blockchain**: Viem + Clanker SDK for Base network
-- **AI/LLM**: OpenAI Claude for trend analysis
-- **Agent Framework**: OpenClaw for autonomous operations
+- **AI/LLM**: Gemini 2.5 Flash (via Manus Forge API) for trend analysis
+- **Agent Framework**: Custom autonomous loop with interval scheduling
 
 ## 📦 Installation
 
@@ -62,13 +62,14 @@ This creates a self-sustaining economic loop where the agent generates value wit
 - MySQL database
 - Base network RPC endpoint
 - Private key with ETH for gas
-- OpenAI API key
+- Manus Forge API key (`BUILT_IN_FORGE_API_KEY`)
 
 ### Setup
 
 ```bash
 # Clone repository
 git clone https://github.com/Abuchtela/BasePulse.git
+cd BasePulse
 cd basepulse-agent
 
 # Install dependencies
@@ -216,7 +217,7 @@ This agent was built for the **Base Build OpenClaw Agent Competition** with a 5E
 ## 📝 Building Process Documentation
 
 The development process included:
-1. Research on OpenClaw framework and Base ecosystem
+1. Research on Base ecosystem and agent architecture patterns
 2. Design of autonomous agent architecture
 3. Implementation of trend analysis engine
 4. Integration of Clanker SDK for token deployment
@@ -241,7 +242,6 @@ MIT License - See LICENSE file for details
 - **GitHub**: https://github.com/Abuchtela/BasePulse
 - **Base Network**: https://base.org
 - **Clanker**: https://clanker.world
-- **OpenClaw**: https://openclaw.ai
 
 ## 💬 Support
 

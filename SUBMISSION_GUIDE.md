@@ -136,7 +136,7 @@ Social media activity linked to on-chain actions:
 ### Autonomous Loop
 The agent runs a continuous autonomous loop that:
 1. Scans X/Farcaster for Base ecosystem trends (every 15 minutes)
-2. Analyzes trends using Claude AI for sentiment
+2. Analyzes trends using Gemini 2.5 Flash via Manus Forge API for sentiment
 3. Validates against DexScreener on-chain metrics
 4. Deploys tokens when thresholds are met
 5. Collects fees and reinvests treasury
@@ -205,7 +205,7 @@ The agent runs a continuous autonomous loop that:
 ## Building Process Documentation
 
 ### Phase 1: Research & Design
-- Researched OpenClaw framework and Base ecosystem
+- Researched Base ecosystem and agent architecture patterns
 - Designed autonomous agent architecture
 - Selected trend-to-token use case for novelty
 
@@ -236,22 +236,22 @@ The agent runs a continuous autonomous loop that:
 ## Key Metrics
 
 ### Deployment Performance
-- Tokens deployed: [N] (tracked in dashboard)
-- Success rate: [X]%
-- Average deployment time: [Y] seconds
-- Gas efficiency: [Z] ETH per deployment
+- Tokens deployed: See live dashboard
+- Success rate: Tracked in dashboard
+- Average deployment time: Tracked in dashboard
+- Gas efficiency: Tracked per deployment
 
 ### Treasury Performance
-- Total fees collected: [A] ETH
-- Reinvestment rate: [B]%
-- Current balance: [C] ETH
-- Growth rate: [D]% per month
+- Total fees collected: See live dashboard
+- Reinvestment rate: 10% of balance when above 1 ETH threshold
+- Current balance: See live dashboard
+- Growth rate: Tracked in dashboard
 
 ### Community Engagement
-- Social media followers: [E]
-- Posts per day: [F]
-- Community responses: [G]
-- Engagement rate: [H]%
+- Social media followers: See agent profiles
+- Posts per day: Autonomous posting active
+- Community responses: Tracked in dashboard
+- Engagement rate: Tracked in dashboard
 
 ## Submission Links
 
