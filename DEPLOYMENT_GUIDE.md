@@ -7,7 +7,7 @@
 - MySQL database
 - Base network RPC endpoint (Alchemy, Infura, or similar)
 - Private key for agent wallet with some ETH for gas
-- Manus Forge API key (`BUILT_IN_FORGE_API_KEY`) for LLM trend analysis
+- OpenAI API key for LLM trend analysis
 
 ## Local Development Setup
 
@@ -29,12 +29,15 @@ DATABASE_URL=mysql://user:password@localhost:3306/basepulse
 # Agent Wallet
 AGENT_PRIVATE_KEY=0x...  # Private key for Base network transactions
 
+# LLM Configuration
+OPENAI_API_KEY=sk-...
+
 # OAuth (Manus)
 VITE_APP_ID=...
 OAUTH_SERVER_URL=...
 VITE_OAUTH_PORTAL_URL=...
 
-# LLM & Notifications (Manus Forge API)
+# Notifications
 BUILT_IN_FORGE_API_KEY=...
 BUILT_IN_FORGE_API_URL=...
 ```
@@ -92,52 +95,54 @@ scheduleAutonomousLoop(agentConfig);
 
 ## Autonomous Agent Setup
 
-### 1. Start the Autonomous Loop
+### 1. Create OpenClaw Agent
 
-The agent uses a built-in autonomous loop that starts automatically with the server. To enable it, initialize the loop in your server startup (already configured in `server/_core/index.ts`):
+If deploying as a standalone OpenClaw agent:
 
-```typescript
-import { scheduleAutonomousLoop } from "../agent/autonomousLoop";
+```bash
+# Install OpenClaw CLI
+npm install -g openclaw
 
-const agentConfig = {
-  enabled: true,
-  intervalMinutes: 15,
-  minSentimentScore: 60,
-  minMentions: 5,
-  minVolume24hUSD: 100000,
-  maxDeploymentsPerDay: 10,
-};
+# Initialize agent
+openclaw onboard --install-daemon
 
-scheduleAutonomousLoop(agentConfig);
+# Configure channels (X, Farcaster)
+openclaw channels login
 ```
 
-### 2. Agent Module Structure
+### 2. Deploy BasePulse Skills
 
-The agent is composed of three core modules under `server/agent/`:
+Create OpenClaw skills directory structure:
 
 ```
-server/agent/
-├── trendMonitor.ts      # LLM-powered trend analysis and validation
-├── tokenDeployer.ts     # Token deployment and treasury management
-└── autonomousLoop.ts    # Loop orchestrator and scheduling
+~/.openclaw/workspace/skills/
+├── basepulse-trend-monitor/
+│   ├── SKILL.md
+│   └── index.ts
+├── basepulse-token-deployer/
+│   ├── SKILL.md
+│   └── index.ts
+└── basepulse-treasury/
+    ├── SKILL.md
+    └── index.ts
 ```
 
 ### 3. Configure Agent Wallet
 
-Set the agent's private key in your environment:
+Set the agent's private key in OpenClaw configuration:
 
 ```bash
-# In .env.local
-AGENT_PRIVATE_KEY=0x...  # Private key for Base network transactions
+openclaw configure --section agent
+# Set AGENT_PRIVATE_KEY environment variable
 ```
 
-### 4. Schedule with Cron (Optional)
+### 4. Enable Autonomous Loop
 
-If you prefer external scheduling instead of the built-in loop:
+Add to agent's system prompt or cron job:
 
 ```bash
 # Run every 15 minutes
-*/15 * * * * curl -X POST http://localhost:3000/api/agent/run
+*/15 * * * * /path/to/basepulse-agent/autonomous-loop.sh
 ```
 
 ## Monitoring & Maintenance
@@ -145,11 +150,11 @@ If you prefer external scheduling instead of the built-in loop:
 ### 1. Check Agent Status
 
 ```bash
-# View server logs (stdout/stderr of the running process)
-tail -f /var/log/basepulse/agent.log
+# View agent logs
+tail -f ~/.openclaw/logs/agent.log
 
-# Check if the server process is running
-ps aux | grep "node dist/index.js"
+# Check autonomous loop status
+ps aux | grep autonomous-loop
 ```
 
 ### 2. Monitor Database
@@ -178,10 +183,10 @@ Access the web dashboard at `https://your-domain.com/dashboard` to monitor:
 ### Issue: Autonomous Loop Not Running
 
 **Solution:**
-1. Check if the server process is running: `ps aux | grep "node dist/index.js"`
-2. Check server logs for errors
+1. Check if the loop is scheduled: `ps aux | grep autonomous-loop`
+2. Check logs for errors: `tail -f ~/.openclaw/logs/agent.log`
 3. Verify environment variables are set: `env | grep AGENT_PRIVATE_KEY`
-4. Restart the server: `systemctl restart basepulse-agent`
+4. Restart the loop: `systemctl restart basepulse-agent`
 
 ### Issue: Token Deployment Failures
 
@@ -194,9 +199,9 @@ Access the web dashboard at `https://your-domain.com/dashboard` to monitor:
 ### Issue: LLM Analysis Errors
 
 **Solution:**
-1. Verify `BUILT_IN_FORGE_API_KEY` is set and valid
-2. Check API connectivity: `curl https://forge.manus.im/v1/chat/completions -H "Authorization: Bearer $BUILT_IN_FORGE_API_KEY"`
-3. Review server logs for specific API errors
+1. Verify OpenAI API key is valid
+2. Check API rate limits: `curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"`
+3. Review error logs for specific API errors
 4. Consider implementing retry logic with exponential backoff
 
 ### Issue: Database Connection Issues
@@ -280,6 +285,7 @@ mysqldump -u user -p basepulse > basepulse-$(date +%Y%m%d).sql
 ### 2. Configuration Backups
 
 - Backup `.env` files securely
+- Backup OpenClaw configuration
 - Maintain version control for all code
 
 ### 3. Recovery Procedures
@@ -291,7 +297,7 @@ mysqldump -u user -p basepulse > basepulse-$(date +%Y%m%d).sql
 ## Support & Troubleshooting
 
 For issues or questions:
-1. Check server logs
+1. Check logs: `tail -f ~/.openclaw/logs/agent.log`
 2. Review documentation: See `AGENT_ARCHITECTURE.md`
 3. Check GitHub issues: https://github.com/Abuchtela/BasePulse
 4. Contact support: support@basepulse.dev

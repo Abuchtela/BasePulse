@@ -136,7 +136,7 @@ Social media activity linked to on-chain actions:
 ### Autonomous Loop
 The agent runs a continuous autonomous loop that:
 1. Scans X/Farcaster for Base ecosystem trends (every 15 minutes)
-2. Analyzes trends using Gemini 2.5 Flash via Manus Forge API for sentiment
+2. Analyzes trends using Claude AI for sentiment
 3. Validates against DexScreener on-chain metrics
 4. Deploys tokens when thresholds are met
 5. Collects fees and reinvests treasury
@@ -205,7 +205,7 @@ The agent runs a continuous autonomous loop that:
 ## Building Process Documentation
 
 ### Phase 1: Research & Design
-- Researched Base ecosystem and agent architecture patterns
+- Researched OpenClaw framework and Base ecosystem
 - Designed autonomous agent architecture
 - Selected trend-to-token use case for novelty
 
