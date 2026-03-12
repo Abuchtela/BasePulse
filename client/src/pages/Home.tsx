@@ -18,6 +18,13 @@ export default function Home() {
             <h1 className="text-2xl font-bold">BasePulse</h1>
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              onClick={() => navigate("/apply")}
+              variant="outline"
+              className="border-blue-500 text-blue-400 hover:bg-blue-500/10"
+            >
+              Apply to Base Batches
+            </Button>
             {isAuthenticated ? (
               <>
                 <span className="text-sm text-slate-400">Welcome, {user?.name || "User"}</span>
@@ -59,15 +66,25 @@ export default function Home() {
             BasePulse monitors social trends on X and Farcaster, validates them against on-chain metrics, and autonomously deploys themed tokens on Base—all without human intervention.
           </p>
           {!isAuthenticated && (
-            <Button
-              onClick={() => {
-                window.location.href = getLoginUrl();
-              }}
-              size="lg"
-              className="bg-blue-600 hover:bg-blue-700 text-lg px-8"
-            >
-              Get Started
-            </Button>
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              <Button
+                onClick={() => {
+                  window.location.href = getLoginUrl();
+                }}
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-lg px-8"
+              >
+                Get Started
+              </Button>
+              <Button
+                onClick={() => navigate("/apply")}
+                size="lg"
+                variant="outline"
+                className="border-blue-500 text-blue-400 hover:bg-blue-500/10 text-lg px-8"
+              >
+                Apply to Base Batches
+              </Button>
+            </div>
           )}
         </div>
 
