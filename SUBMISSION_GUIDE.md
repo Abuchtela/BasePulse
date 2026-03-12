@@ -106,7 +106,7 @@ Social media activity linked to on-chain actions:
 ## How to Access the Agent
 
 ### 1. Web Dashboard
-**URL**: https://basepulse.manus.space/dashboard
+**URL**: https://base.manus.space/dashboard
 
 **Features**:
 - Real-time token deployment tracking
@@ -171,7 +171,7 @@ The agent runs a continuous autonomous loop that:
 - Fee collection and reinvestment
 
 **Verification**:
-- View deployed tokens: https://basepulse.manus.space/dashboard
+- View deployed tokens: https://base.manus.space/dashboard
 - Check Base Mainnet: https://basescan.org
 - Verify transactions: Search token addresses
 
@@ -255,7 +255,7 @@ The agent runs a continuous autonomous loop that:
 
 ## Submission Links
 
-**Primary Submission**: https://basepulse.manus.space/dashboard
+**Primary Submission**: https://base.manus.space/dashboard
 
 **Social Media Profiles**:
 - X: [@BasePulseAgent](https://x.com/basepulseagent)
