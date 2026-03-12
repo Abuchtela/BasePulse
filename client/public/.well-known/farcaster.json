@@ -8,11 +8,11 @@
   "frame": {
     "version": "1",
     "name": "BasePulse",
-    "iconUrl": "https://base.manus.space/icon.png",
-    "homeUrl": "https://base.manus.space",
-    "imageUrl": "https://base.manus.space/og-image.png",
+    "iconUrl": "https://basepulse.manus.space/icon.png",
+    "homeUrl": "https://basepulse.manus.space",
+    "imageUrl": "https://basepulse.manus.space/og-image.png",
     "buttonTitle": "Open BasePulse",
-    "splashImageUrl": "https://base.manus.space/og-image.png",
+    "splashImageUrl": "https://basepulse.manus.space/og-image.png",
     "splashBackgroundColor": "#0052FF"
   }
 }
