@@ -18,6 +18,13 @@ export default function Home() {
             <h1 className="text-2xl font-bold">BasePulse</h1>
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              onClick={() => navigate("/registry")}
+              variant="outline"
+              className="border-slate-600 hover:bg-slate-800 text-emerald-400 border-emerald-800"
+            >
+              Registry
+            </Button>
             {isAuthenticated ? (
               <>
                 <span className="text-sm text-slate-400">Welcome, {user?.name || "User"}</span>
