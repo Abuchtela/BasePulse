@@ -1,0 +1,37 @@
+# .ona/automations.yaml
+# Tasks run to completion; services run for the lifetime of the environment.
+# See: https://ona.com/docs/ona/reference/automations-yaml-schema
+
+tasks:
+  install:
+    name: Install dependencies
+    command: pnpm install
+    triggeredBy:
+      - postDevcontainerStart
+
+  db-push:
+    name: Run database migrations
+    description: Generates and applies Drizzle schema migrations. Requires DATABASE_URL in .env.
+    command: pnpm db:push
+    dependsOn:
+      - install
+    triggeredBy:
+      - manual
+
+  test:
+    name: Run tests
+    command: pnpm test
+    dependsOn:
+      - install
+    triggeredBy:
+      - manual
+
+services:
+  dev:
+    name: Dev server
+    description: Starts the Express + Vite dev server on port 5000.
+    commands:
+      start: pnpm dev
+      ready: curl -sf http://localhost:5000
+    triggeredBy:
+      - manual
