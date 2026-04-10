@@ -40,8 +40,15 @@ async function startServer() {
   app.use("/api/registry", (req: Request, res: Response) => {
     const upstreamPath = "/api/registry" + req.path + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
     const headers: Record<string, string> = { "Content-Type": "application/json" };
+    // Prefer client-supplied Authorization, fall back to server-side Base API key
     if (req.headers["authorization"]) {
       headers["authorization"] = req.headers["authorization"] as string;
+    } else if (process.env.BASE_API_KEY) {
+      headers["authorization"] = `Bearer ${process.env.BASE_API_KEY}`;
+    }
+    // Forward builder code if configured
+    if (process.env.BASE_BUILDER_CODE) {
+      headers["x-builder-code"] = process.env.BASE_BUILDER_CODE;
     }
     const options = {
       hostname: "base.org",

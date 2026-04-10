@@ -1,11 +1,16 @@
 /**
  * Token Deployer Module for BasePulse Agent
  * Handles ERC20 token deployment on Base using Coinbase CDP SDK and Paymaster
+ *
+ * Builder Code attribution (ERC-8021) is included on every deployment so Base
+ * can attribute onchain activity back to BasePulse.
+ * See: https://docs.base.org/base-chain/builder-codes/app-developers
  */
 
 import { Coinbase, ERC20Token } from "@coinbase/cdp-sdk";
 import { createDeployedToken, createTreasuryTransaction } from "../db";
 import { notifyOwner } from "../_core/notification";
+import { DATA_SUFFIX, BASE_BUILDER_CODE } from "./baseAttribution";
 
 interface TokenDeploymentConfig {
   name: string;
@@ -39,7 +44,8 @@ function initializeCoinbase() {
 }
 
 /**
- * Deploy a token on Base using Coinbase CDP SDK
+ * Deploy a token on Base using Coinbase CDP SDK.
+ * All transactions include the ERC-8021 dataSuffix for builder attribution.
  */
 export async function deployToken(
   config: TokenDeploymentConfig
@@ -48,16 +54,20 @@ export async function deployToken(
     initializeCoinbase();
 
     console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using Coinbase SDK`);
-    
+    console.log(`[TokenDeployer] Builder attribution: code=${BASE_BUILDER_CODE} suffix=${DATA_SUFFIX}`);
+
     // Create a server-side wallet on Base
     const wallet = await Coinbase.createWallet({ networkId: Coinbase.networks.BaseMainnet });
-    
+
     // Deploy ERC20 token
-    // Note: CDP SDK provides a high-level method to deploy tokens
+    // Note: CDP SDK provides a high-level method to deploy tokens.
+    // The dataSuffix (ERC-8021) is appended to the deployment calldata for attribution.
     const token = await wallet.deployToken({
       name: config.name,
       symbol: config.symbol,
       totalSupply: 1000000000, // 1 Billion tokens
+      // @ts-ignore — dataSuffix is supported in viem >=2.45.0 and CDP SDK passes it through
+      dataSuffix: DATA_SUFFIX,
     });
 
     const tokenAddress = token.getAddress();
@@ -93,7 +103,7 @@ export async function deployToken(
     // Notify owner of successful deployment
     await notifyOwner({
       title: `🚀 Token Deployed: ${config.symbol}`,
-      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using Coinbase SDK.\n\nToken Address: ${tokenAddress}\nSponsored by Coinbase Paymaster.`,
+      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using Coinbase SDK.\n\nToken Address: ${tokenAddress}\nBuilder Code: ${BASE_BUILDER_CODE}\nSponsored by Coinbase Paymaster.`,
     });
 
     return {
