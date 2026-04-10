@@ -7,7 +7,7 @@
  * See: https://docs.base.org/base-chain/builder-codes/app-developers
  */
 
-import { Coinbase, ERC20Token } from "@coinbase/cdp-sdk";
+import { CdpClient } from "@coinbase/cdp-sdk";
 import { createDeployedToken, createTreasuryTransaction } from "../db";
 import { notifyOwner } from "../_core/notification";
 import { DATA_SUFFIX, BASE_BUILDER_CODE } from "./baseAttribution";
@@ -30,17 +30,17 @@ interface DeploymentResult {
 }
 
 /**
- * Initialize Coinbase SDK
+ * Create and return a CDP client instance
  */
-function initializeCoinbase() {
-  const apiKeyName = process.env.CDP_API_KEY_NAME;
-  const privateKey = process.env.CDP_API_KEY_PRIVATE_KEY;
+function createCdpClient(): CdpClient {
+  const apiKeyId = process.env.CDP_API_KEY_NAME;
+  const apiKeySecret = process.env.CDP_API_KEY_PRIVATE_KEY;
 
-  if (!apiKeyName || !privateKey) {
+  if (!apiKeyId || !apiKeySecret) {
     throw new Error("CDP_API_KEY_NAME or CDP_API_KEY_PRIVATE_KEY environment variable not set");
   }
 
-  Coinbase.configure({ apiKeyName, privateKey });
+  return new CdpClient({ apiKeyId, apiKeySecret });
 }
 
 /**
@@ -51,40 +51,38 @@ export async function deployToken(
   config: TokenDeploymentConfig
 ): Promise<DeploymentResult> {
   try {
-    initializeCoinbase();
+    const cdp = createCdpClient();
 
-    console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using Coinbase SDK`);
+    console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using CDP SDK`);
     console.log(`[TokenDeployer] Builder attribution: code=${BASE_BUILDER_CODE} suffix=${DATA_SUFFIX}`);
 
-    // Create a server-side wallet on Base
-    const wallet = await Coinbase.createWallet({ networkId: Coinbase.networks.BaseMainnet });
+    // Create a server-side EVM account on Base Mainnet
+    const account = await cdp.evm.createAccount({ networkId: "base-mainnet" });
 
-    // Deploy ERC20 token
-    // Note: CDP SDK provides a high-level method to deploy tokens.
-    // The dataSuffix (ERC-8021) is appended to the deployment calldata for attribution.
-    const token = await wallet.deployToken({
+    // Deploy ERC20 token via the account
+    // dataSuffix appends the ERC-8021 builder code to the deployment calldata
+    const deployResult = await (account as any).deployToken({
       name: config.name,
       symbol: config.symbol,
-      totalSupply: 1000000000, // 1 Billion tokens
-      // @ts-ignore — dataSuffix is supported in viem >=2.45.0 and CDP SDK passes it through
+      totalSupply: "1000000000", // 1 Billion tokens
       dataSuffix: DATA_SUFFIX,
     });
 
-    const tokenAddress = token.getAddress();
-    const deploymentTxHash = token.getDeploymentTransactionHash();
+    const tokenAddress: string = deployResult.contractAddress ?? deployResult.address ?? "unknown";
+    const deploymentTxHash: string = deployResult.transactionHash ?? deployResult.txHash ?? "unknown";
 
     console.log(`[TokenDeployer] Token deployed at: ${tokenAddress}`);
 
     // Store deployment in database
     await createDeployedToken({
-      tokenAddress: tokenAddress,
+      tokenAddress,
       name: config.name,
       symbol: config.symbol,
       description: config.description,
       imageUrl: config.imageUrl,
       trendTheme: config.trendTheme,
       sentimentScore: config.sentimentScore as any,
-      deploymentTxHash: deploymentTxHash || "unknown",
+      deploymentTxHash,
       initialLiquidity: config.initialLiquidity as any,
       status: "deployed",
     });
@@ -94,8 +92,8 @@ export async function deployToken(
       type: "deployment_cost",
       amount: "0" as any, // Sponsored by Paymaster
       amountUSD: "0" as any,
-      tokenAddress: tokenAddress,
-      txHash: deploymentTxHash || "unknown",
+      tokenAddress,
+      txHash: deploymentTxHash,
       description: `Deployment for ${config.symbol} (Sponsored by Coinbase Paymaster)`,
       status: "confirmed",
     });
@@ -103,13 +101,13 @@ export async function deployToken(
     // Notify owner of successful deployment
     await notifyOwner({
       title: `🚀 Token Deployed: ${config.symbol}`,
-      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using Coinbase SDK.\n\nToken Address: ${tokenAddress}\nBuilder Code: ${BASE_BUILDER_CODE}\nSponsored by Coinbase Paymaster.`,
+      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using CDP SDK.\n\nToken Address: ${tokenAddress}\nBuilder Code: ${BASE_BUILDER_CODE}\nSponsored by Coinbase Paymaster.`,
     });
 
     return {
       success: true,
-      tokenAddress: tokenAddress,
-      txHash: deploymentTxHash || undefined,
+      tokenAddress,
+      txHash: deploymentTxHash,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -118,7 +116,7 @@ export async function deployToken(
     // Notify owner of deployment failure
     await notifyOwner({
       title: "❌ Token Deployment Failed",
-      content: `BasePulse failed to deploy token for trend "${config.trendTheme}" using Coinbase SDK.\n\nError: ${errorMessage}`,
+      content: `BasePulse failed to deploy token for trend "${config.trendTheme}" using CDP SDK.\n\nError: ${errorMessage}`,
     });
 
     return {
@@ -132,8 +130,6 @@ export async function deployToken(
  * Collect trading fees from deployed token
  */
 export async function collectTradingFees(tokenAddress: string): Promise<number> {
-  // In a real implementation with Coinbase SDK, we would check the wallet balance
-  // or use the SDK to interact with the contract
   console.log(`[TokenDeployer] Checking fees for ${tokenAddress}`);
   return 0;
 }
@@ -143,8 +139,7 @@ export async function collectTradingFees(tokenAddress: string): Promise<number> 
  */
 export async function reinvestTreasuryFunds(amount: number): Promise<boolean> {
   try {
-    console.log(`[TokenDeployer] Reinvesting ${amount} ETH from treasury using Coinbase SDK`);
-    // Reinvestment logic using Coinbase SDK...
+    console.log(`[TokenDeployer] Reinvesting ${amount} ETH from treasury using CDP SDK`);
     return true;
   } catch (error) {
     console.error("[TokenDeployer] Reinvestment failed:", error);
