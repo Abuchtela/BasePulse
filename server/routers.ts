@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { getDeployedTokens, getTrendAnalysis, getTreasuryBalance, getSocialInteractions } from "./db";
+import { ENV } from "./_core/env";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -39,6 +40,14 @@ export const appRouter = router({
       interactions: publicProcedure.query(async () => {
         return getSocialInteractions(50);
       }),
+    }),
+    registry: router({
+      // Returns whether server-side Base API credentials are configured
+      // (never exposes the actual key values to the client)
+      config: publicProcedure.query(() => ({
+        hasApiKey: !!ENV.baseApiKey,
+        hasBuilderCode: !!ENV.baseBuilderCode,
+      })),
     }),
   }),
 });

@@ -8,6 +8,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { scheduleAutonomousLoop } from "../agent/autonomousLoop";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,8 +40,15 @@ async function startServer() {
   app.use("/api/registry", (req: Request, res: Response) => {
     const upstreamPath = "/api/registry" + req.path + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
     const headers: Record<string, string> = { "Content-Type": "application/json" };
+    // Prefer client-supplied Authorization, fall back to server-side Base API key
     if (req.headers["authorization"]) {
       headers["authorization"] = req.headers["authorization"] as string;
+    } else if (process.env.BASE_API_KEY) {
+      headers["authorization"] = `Bearer ${process.env.BASE_API_KEY}`;
+    }
+    // Forward builder code if configured
+    if (process.env.BASE_BUILDER_CODE) {
+      headers["x-builder-code"] = process.env.BASE_BUILDER_CODE;
     }
     const options = {
       hostname: "base.org",
@@ -90,6 +98,16 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+  });
+
+  // Start the autonomous agent loop
+  scheduleAutonomousLoop({
+    enabled: true,
+    intervalMinutes: 15,
+    minSentimentScore: 60,
+    minMentions: 5,
+    minVolume24hUSD: 100000,
+    maxDeploymentsPerDay: 10,
   });
 }
 

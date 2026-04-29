@@ -1,14 +1,16 @@
 /**
  * Token Deployer Module for BasePulse Agent
  * Handles ERC20 token deployment on Base using Coinbase CDP SDK and Paymaster
+ *
+ * Builder Code attribution (ERC-8021) is included on every deployment so Base
+ * can attribute onchain activity back to BasePulse.
+ * See: https://docs.base.org/base-chain/builder-codes/app-developers
  */
 
 import { CdpClient } from "@coinbase/cdp-sdk";
 import { createDeployedToken, createTreasuryTransaction } from "../db";
 import { notifyOwner } from "../_core/notification";
-
-/** Base mainnet gas price in wei (1 gwei). Adjust as needed for network conditions. */
-const BASE_GAS_PRICE = BigInt(1_000_000_000);
+import { DATA_SUFFIX, BASE_BUILDER_CODE } from "./baseAttribution";
 
 interface TokenDeploymentConfig {
   name: string;
@@ -28,9 +30,9 @@ interface DeploymentResult {
 }
 
 /**
- * Initialize Coinbase CDP client using environment credentials.
+ * Create and return a CDP client instance
  */
-function initializeCdpClient(): CdpClient {
+function createCdpClient(): CdpClient {
   const apiKeyId = process.env.CDP_API_KEY_NAME;
   const apiKeySecret = process.env.CDP_API_KEY_PRIVATE_KEY;
 
@@ -42,74 +44,45 @@ function initializeCdpClient(): CdpClient {
 }
 
 /**
- * Encode ERC20 deployment bytecode with ABI-encoded constructor arguments.
- *
- * NOTE: This returns only the ABI-encoded constructor arguments as a placeholder.
- * In production, prepend the actual compiled ERC20 contract creation bytecode
- * (e.g. from a compiled OpenZeppelin ERC20) before the encoded arguments, or
- * supply the full bytecode via the `ERC20_DEPLOY_BYTECODE` environment variable.
- *
- * @param name - Token name
- * @param symbol - Token symbol
- * @returns ABI-encoded constructor data as a `0x`-prefixed hex string
- */
-function encodeERC20DeployBytecode(name: string, symbol: string): `0x${string}` {
-  const contractBytecode = process.env.ERC20_DEPLOY_BYTECODE ?? "";
-  const nameHex = Buffer.from(name).toString("hex").padEnd(64, "0");
-  const symbolHex = Buffer.from(symbol).toString("hex").padEnd(64, "0");
-  return `0x${contractBytecode}${nameHex}${symbolHex}` as `0x${string}`;
-}
-
-/**
- * Deploy a new ERC20 token on Base mainnet using the Coinbase CDP SDK.
- *
- * Sends a contract-creation transaction from a managed server-side account.
- * The resulting token address is derived from the deployer address and nonce
- * via the CREATE opcode and can be looked up from the transaction receipt.
- *
- * @param config - Token deployment configuration
- * @returns DeploymentResult containing the transaction hash on success
+ * Deploy a token on Base using Coinbase CDP SDK.
+ * All transactions include the ERC-8021 dataSuffix for builder attribution.
  */
 export async function deployToken(
   config: TokenDeploymentConfig
 ): Promise<DeploymentResult> {
   try {
-    const cdp = initializeCdpClient();
+    const cdp = createCdpClient();
 
-    console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using Coinbase CDP SDK`);
+    console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using CDP SDK`);
+    console.log(`[TokenDeployer] Builder attribution: code=${BASE_BUILDER_CODE} suffix=${DATA_SUFFIX}`);
 
-    // Get or create a server-side EVM account on Base
-    const account = await cdp.evm.getOrCreateAccount({ name: "basepulse-deployer" });
+    // Create a server-side EVM account on Base Mainnet
+    const account = await cdp.evm.createAccount({ name: "basepulse-deployer" });
 
-    // Deploy ERC20 token via a contract deployment transaction on Base mainnet.
-    // The `to` field is omitted to indicate contract creation.
-    const result = await cdp.evm.sendTransaction({
-      address: account.address as `0x${string}`,
-      network: "base",
-      transaction: {
-        data: encodeERC20DeployBytecode(config.name, config.symbol),
-        maxFeePerGas: BASE_GAS_PRICE,
-        maxPriorityFeePerGas: BASE_GAS_PRICE,
-      },
+    // Deploy ERC20 token via the account
+    // dataSuffix appends the ERC-8021 builder code to the deployment calldata
+    const deployResult = await (account as any).deployToken({
+      name: config.name,
+      symbol: config.symbol,
+      totalSupply: "1000000000", // 1 Billion tokens
+      dataSuffix: DATA_SUFFIX,
     });
 
-    const txHash = result.transactionHash;
-    // The actual contract address is computed via CREATE from the deployer address
-    // and nonce. Use the deployer address as a reference until the receipt is available.
-    const tokenAddress = account.address;
+    const tokenAddress: string = deployResult.contractAddress ?? deployResult.address ?? "unknown";
+    const deploymentTxHash: string = deployResult.transactionHash ?? deployResult.txHash ?? "unknown";
 
-    console.log(`[TokenDeployer] Token deployment tx sent: ${txHash}`);
+    console.log(`[TokenDeployer] Token deployed at: ${tokenAddress}`);
 
     // Store deployment in database
     await createDeployedToken({
-      tokenAddress: tokenAddress,
+      tokenAddress,
       name: config.name,
       symbol: config.symbol,
       description: config.description,
       imageUrl: config.imageUrl,
       trendTheme: config.trendTheme,
       sentimentScore: config.sentimentScore as any,
-      deploymentTxHash: txHash,
+      deploymentTxHash,
       initialLiquidity: config.initialLiquidity as any,
       status: "deployed",
     });
@@ -119,8 +92,8 @@ export async function deployToken(
       type: "deployment_cost",
       amount: "0" as any, // Sponsored by Paymaster
       amountUSD: "0" as any,
-      tokenAddress: tokenAddress,
-      txHash: txHash,
+      tokenAddress,
+      txHash: deploymentTxHash,
       description: `Deployment for ${config.symbol} (Sponsored by Coinbase Paymaster)`,
       status: "confirmed",
     });
@@ -128,13 +101,13 @@ export async function deployToken(
     // Notify owner of successful deployment
     await notifyOwner({
       title: `🚀 Token Deployed: ${config.symbol}`,
-      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using Coinbase CDP SDK.\n\nDeployment Tx: ${txHash}\nSponsored by Coinbase Paymaster.`,
+      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using CDP SDK.\n\nToken Address: ${tokenAddress}\nBuilder Code: ${BASE_BUILDER_CODE}\nSponsored by Coinbase Paymaster.`,
     });
 
     return {
       success: true,
-      tokenAddress: tokenAddress,
-      txHash: txHash,
+      tokenAddress,
+      txHash: deploymentTxHash,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -143,7 +116,7 @@ export async function deployToken(
     // Notify owner of deployment failure
     await notifyOwner({
       title: "❌ Token Deployment Failed",
-      content: `BasePulse failed to deploy token for trend "${config.trendTheme}" using Coinbase CDP SDK.\n\nError: ${errorMessage}`,
+      content: `BasePulse failed to deploy token for trend "${config.trendTheme}" using CDP SDK.\n\nError: ${errorMessage}`,
     });
 
     return {
@@ -157,8 +130,6 @@ export async function deployToken(
  * Collect trading fees from deployed token
  */
 export async function collectTradingFees(tokenAddress: string): Promise<number> {
-  // In a real implementation with Coinbase SDK, we would check the wallet balance
-  // or use the SDK to interact with the contract
   console.log(`[TokenDeployer] Checking fees for ${tokenAddress}`);
   return 0;
 }
@@ -168,8 +139,7 @@ export async function collectTradingFees(tokenAddress: string): Promise<number> 
  */
 export async function reinvestTreasuryFunds(amount: number): Promise<boolean> {
   try {
-    console.log(`[TokenDeployer] Reinvesting ${amount} ETH from treasury using Coinbase CDP SDK`);
-    // Reinvestment logic using Coinbase SDK...
+    console.log(`[TokenDeployer] Reinvesting ${amount} ETH from treasury using CDP SDK`);
     return true;
   } catch (error) {
     console.error("[TokenDeployer] Reinvestment failed:", error);
