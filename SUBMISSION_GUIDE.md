@@ -236,22 +236,22 @@ The agent runs a continuous autonomous loop that:
 ## Key Metrics
 
 ### Deployment Performance
-- Tokens deployed: [N] (tracked in dashboard)
-- Success rate: [X]%
-- Average deployment time: [Y] seconds
-- Gas efficiency: [Z] ETH per deployment
+- Tokens deployed: See live dashboard
+- Success rate: Tracked in dashboard
+- Average deployment time: Tracked in dashboard
+- Gas efficiency: Tracked per deployment
 
 ### Treasury Performance
-- Total fees collected: [A] ETH
-- Reinvestment rate: [B]%
-- Current balance: [C] ETH
-- Growth rate: [D]% per month
+- Total fees collected: See live dashboard
+- Reinvestment rate: 10% of balance when above 1 ETH threshold
+- Current balance: See live dashboard
+- Growth rate: Tracked in dashboard
 
 ### Community Engagement
-- Social media followers: [E]
-- Posts per day: [F]
-- Community responses: [G]
-- Engagement rate: [H]%
+- Social media followers: See agent profiles
+- Posts per day: Autonomous posting active
+- Community responses: Tracked in dashboard
+- Engagement rate: Tracked in dashboard
 
 ## Submission Links
 
@@ -267,8 +267,8 @@ The agent runs a continuous autonomous loop that:
 - README: [README.md](./README.md)
 
 **GitHub Repository**:
-- Code: https://github.com/basepulse/agent
-- Issues: https://github.com/basepulse/agent/issues
+- Code: https://github.com/Abuchtela/BasePulse
+- Issues: https://github.com/Abuchtela/BasePulse/issues
 
 ## Contact & Support
 

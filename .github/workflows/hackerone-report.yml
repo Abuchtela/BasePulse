@@ -1,0 +1,98 @@
+name: HackerOne Security Reporting
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "Vulnerability title"
+        required: true
+      severity:
+        description: "Severity (none, low, medium, high, critical)"
+        required: true
+        default: "medium"
+      summary:
+        description: "Vulnerability summary"
+        required: true
+
+jobs:
+  report-to-hackerone:
+    name: Submit Report to HackerOne
+    runs-on: ubuntu-latest
+
+    # Trigger automatically when an issue is labeled "security"
+    # or manually via workflow_dispatch
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.label.name == 'security')
+
+    steps:
+      - name: Prepare report payload
+        id: payload
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TITLE=${{ github.event.inputs.title }}" >> $GITHUB_ENV
+            echo "SEVERITY=${{ github.event.inputs.severity }}" >> $GITHUB_ENV
+            echo "SUMMARY=${{ github.event.inputs.summary }}" >> $GITHUB_ENV
+          else
+            echo "TITLE=${{ github.event.issue.title }}" >> $GITHUB_ENV
+            echo "SEVERITY=none" >> $GITHUB_ENV
+            echo "SUMMARY=${{ github.event.issue.body }}" >> $GITHUB_ENV
+          fi
+
+      - name: Submit vulnerability report to HackerOne
+        env:
+          H1_USERNAME: ${{ secrets.HACKERONE_USERNAME }}
+          H1_API_TOKEN: ${{ secrets.HACKERONE_API_TOKEN }}
+          H1_PROGRAM: ${{ secrets.HACKERONE_PROGRAM_HANDLE }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg summary "$SUMMARY" \
+            --arg severity "$SEVERITY" \
+            --arg program "$H1_PROGRAM" \
+            '{
+              "data": {
+                "type": "report",
+                "attributes": {
+                  "team_handle": $program,
+                  "title": $title,
+                  "vulnerability_information": $summary,
+                  "impact": "Reported via GitHub Actions from repository BasePulse",
+                  "severity_rating": $severity,
+                  "source": "github-actions"
+                }
+              }
+            }')
+
+          HTTP_STATUS=$(curl -s -o /tmp/h1_response.json -w "%{http_code}" \
+            -X POST "https://api.hackerone.com/v1/reports" \
+            -u "${H1_USERNAME}:${H1_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "HTTP Status: $HTTP_STATUS"
+          cat /tmp/h1_response.json
+
+          if [ "$HTTP_STATUS" -ne 201 ]; then
+            echo "::error::Failed to submit HackerOne report (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+
+          REPORT_ID=$(jq -r '.data.id' /tmp/h1_response.json)
+          echo "::notice::HackerOne report submitted successfully — ID: $REPORT_ID"
+          echo "REPORT_ID=$REPORT_ID" >> $GITHUB_ENV
+
+      - name: Comment on GitHub Issue with HackerOne link
+        if: github.event_name == 'issues'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const reportId = process.env.REPORT_ID;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🔒 This issue has been forwarded to HackerOne for security triage.\n\n**Report ID:** \`${reportId}\`\n\nOur security team will follow up shortly.`
+            });
