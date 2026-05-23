@@ -36,6 +36,16 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+  app.get("/healthz", (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: "ok",
+      service: "basepulse",
+      nodeEnv: process.env.NODE_ENV || "development",
+      agentEnabled: process.env.BASEPULSE_AGENT_ENABLED === "true",
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // ── Registry proxy: /api/registry/* → https://base.org/api/registry/* ──────
   app.use("/api/registry", (req: Request, res: Response) => {
     const upstreamPath = "/api/registry" + req.path + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
@@ -100,15 +110,20 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
   });
 
-  // Start the autonomous agent loop
-  scheduleAutonomousLoop({
-    enabled: true,
-    intervalMinutes: 15,
-    minSentimentScore: 60,
-    minMentions: 5,
-    minVolume24hUSD: 100000,
-    maxDeploymentsPerDay: 10,
-  });
+  if (process.env.BASEPULSE_AGENT_ENABLED === "true") {
+    // Start the autonomous agent loop only when explicitly enabled.
+    // This prevents accidental token deployments when hosting the dashboard.
+    scheduleAutonomousLoop({
+      enabled: true,
+      intervalMinutes: parseInt(process.env.BASEPULSE_AGENT_INTERVAL_MINUTES || "15"),
+      minSentimentScore: parseInt(process.env.BASEPULSE_MIN_SENTIMENT_SCORE || "60"),
+      minMentions: parseInt(process.env.BASEPULSE_MIN_MENTIONS || "5"),
+      minVolume24hUSD: parseInt(process.env.BASEPULSE_MIN_VOLUME_24H_USD || "100000"),
+      maxDeploymentsPerDay: parseInt(process.env.BASEPULSE_MAX_DEPLOYMENTS_PER_DAY || "10"),
+    });
+  } else {
+    console.log("BasePulse autonomous agent loop is disabled. Set BASEPULSE_AGENT_ENABLED=true to enable it.");
+  }
 }
 
 startServer().catch(console.error);
