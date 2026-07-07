@@ -75,7 +75,10 @@ function buildERC20DeployData(name: string, symbol: string): `0x${string}` {
     );
   }
 
-  // Encode bytecode + ABI-encoded constructor args (standard ERC20: name, symbol)
+  // Encode bytecode + ABI-encoded constructor args.
+  // The ABI must match the actual constructor of the contract in ERC20_DEPLOY_BYTECODE.
+  // This expects a standard ERC20 constructor(string name, string symbol).
+  // If your bytecode uses a different constructor signature, update the inputs below.
   const deployData = encodeDeployData({
     abi: [
       {
