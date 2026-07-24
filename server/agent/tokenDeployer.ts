@@ -9,7 +9,7 @@
 
 import { CdpClient } from "@coinbase/cdp-sdk";
 import { concatHex, encodeDeployData } from "viem";
-import { createDeployedToken, createTreasuryTransaction } from "../db";
+import { createDeployedToken, createTreasuryTransaction, updateTreasuryTransactionByTxHash } from "../db";
 import { notifyOwner } from "../_core/notification";
 import { DATA_SUFFIX, BASE_BUILDER_CODE } from "./baseAttribution";
 
@@ -135,10 +135,23 @@ export async function deployToken(
 
     console.log(`[TokenDeployer] Deployment tx sent: ${transactionHash}. Waiting for receipt…`);
 
+    // Record the outgoing deployment transaction immediately as "pending"
+    // so it is tracked even if the process is interrupted before confirmation.
+    await createTreasuryTransaction({
+      type: "deployment_cost",
+      amount: "0" as any, // Sponsored by Paymaster
+      amountUSD: "0" as any,
+      txHash: transactionHash,
+      description: `Deployment for ${config.symbol} (Sponsored by Coinbase Paymaster)`,
+      status: "pending",
+    });
+
     // Wait for the transaction to be mined and get the confirmed contract address
     const receipt = await networkAccount.waitForTransactionReceipt({ transactionHash });
 
     if (!receipt.contractAddress) {
+      // Mark the pending treasury record as failed since the tx produced no contract
+      await updateTreasuryTransactionByTxHash(transactionHash, { status: "failed" });
       throw new Error(`Transaction ${transactionHash} did not produce a contract address`);
     }
 
@@ -146,7 +159,7 @@ export async function deployToken(
 
     console.log(`[TokenDeployer] Token deployed at: ${tokenAddress}`);
 
-    // Persist deployment record with confirmed on-chain data
+    // Persist deployment record with confirmed on-chain data (contract address and block number)
     await createDeployedToken({
       tokenAddress,
       name: config.name,
@@ -156,19 +169,18 @@ export async function deployToken(
       trendTheme: config.trendTheme,
       sentimentScore: config.sentimentScore as any,
       deploymentTxHash: transactionHash,
+      deploymentBlockNumber:
+        receipt.blockNumber !== undefined && receipt.blockNumber !== null
+          ? Number(receipt.blockNumber)
+          : undefined,
       initialLiquidity: config.initialLiquidity as any,
       status: "deployed",
     });
 
-    // Record deployment cost in treasury (gas sponsored by Paymaster via CDP SDK)
-    await createTreasuryTransaction({
-      type: "deployment_cost",
-      amount: "0" as any, // Sponsored by Paymaster
-      amountUSD: "0" as any,
-      tokenAddress,
-      txHash: transactionHash,
-      description: `Deployment for ${config.symbol} (Sponsored by Coinbase Paymaster)`,
+    // Confirm the pending treasury transaction now that we have the contract address
+    await updateTreasuryTransactionByTxHash(transactionHash, {
       status: "confirmed",
+      tokenAddress,
     });
 
     // Notify owner of successful deployment
