@@ -149,7 +149,7 @@ export async function createTreasuryTransaction(tx: InsertTreasuryTransaction) {
 
 export async function updateTreasuryTransactionByTxHash(
   txHash: string,
-  updates: { status: "pending" | "confirmed" | "failed"; tokenAddress?: string }
+  updates: { status: "confirmed" | "failed"; tokenAddress?: string }
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
