@@ -51,25 +51,28 @@ function createCdpClient(): CdpClient {
  * via the `ERC20_DEPLOY_BYTECODE` environment variable. An optional `0x`
  * prefix is accepted and will be stripped before concatenation.
  *
- * The ERC-8021 dataSuffix for builder attribution is appended to the calldata.
- *
  * @param name - Token name
  * @param symbol - Token symbol
  * @returns Contract creation data as a `0x`-prefixed hex string
  */
-function buildERC20DeployData(name: string, symbol: string): `0x${string}` {
-  const rawBytecode = process.env.ERC20_DEPLOY_BYTECODE;
+function encodeERC20DeployBytecode(name: string, symbol: string): `0x${string}` {
+  const rawContractBytecode = process.env.ERC20_DEPLOY_BYTECODE;
 
-  if (!rawBytecode || rawBytecode.trim() === "") {
+  if (!rawContractBytecode || rawContractBytecode.trim() === "") {
     throw new Error(
       "ERC20_DEPLOY_BYTECODE environment variable is required and must contain the compiled ERC20 deployment bytecode"
     );
   }
 
-  const bytecode = rawBytecode.startsWith("0x") ? rawBytecode : `0x${rawBytecode}`;
-  const hexPart = bytecode.slice(2);
+  const contractBytecode = rawContractBytecode.startsWith("0x")
+    ? rawContractBytecode.slice(2)
+    : rawContractBytecode;
 
-  if (hexPart.length === 0 || hexPart.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(hexPart)) {
+  if (
+    contractBytecode.length === 0 ||
+    contractBytecode.length % 2 !== 0 ||
+    !/^[0-9a-fA-F]+$/.test(contractBytecode)
+  ) {
     throw new Error(
       "ERC20_DEPLOY_BYTECODE must be a non-empty even-length hex string with an optional 0x prefix"
     );
@@ -89,7 +92,7 @@ function buildERC20DeployData(name: string, symbol: string): `0x${string}` {
         ],
       },
     ],
-    bytecode: bytecode as `0x${string}`,
+    bytecode: `0x${contractBytecode}`,
     args: [name, symbol],
   });
 
@@ -125,7 +128,7 @@ export async function deployToken(
 
     // Build contract-creation calldata (bytecode + ABI-encoded constructor args +
     // ERC-8021 attribution suffix)
-    const deployData = buildERC20DeployData(config.name, config.symbol);
+    const deployData = encodeERC20DeployBytecode(config.name, config.symbol);
 
     // Send the contract-creation transaction (no `to` field = CREATE opcode)
     const { transactionHash } = await networkAccount.sendTransaction({
