@@ -45,8 +45,6 @@ function createCdpClient(): CdpClient {
 }
 
 /**
- * Build the contract creation calldata for a standard ERC20 token.
- *
  * Requires the full compiled ERC20 contract creation bytecode to be provided
  * via the `ERC20_DEPLOY_BYTECODE` environment variable. An optional `0x`
  * prefix is accepted and will be stripped before concatenation.
