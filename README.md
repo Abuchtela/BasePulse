@@ -51,7 +51,7 @@ This creates a self-sustaining economic loop where the agent generates value wit
 - **Backend**: Express 4 + tRPC 11
 - **Database**: MySQL with Drizzle ORM
 - **Blockchain**: Viem + Clanker SDK for Base network
-- **AI/LLM**: OpenAI Claude for trend analysis
+- **AI/LLM**: Claude (Anthropic) for trend analysis
 - **Agent Framework**: OpenClaw for autonomous operations
 
 ## 📦 Installation
@@ -68,7 +68,8 @@ This creates a self-sustaining economic loop where the agent generates value wit
 
 ```bash
 # Clone repository
-git clone https://github.com/basepulse/agent.git
+git clone https://github.com/Abuchtela/BasePulse.git
+cd BasePulse
 cd basepulse-agent
 
 # Install dependencies
@@ -238,7 +239,7 @@ MIT License - See LICENSE file for details
 
 ## 🔗 Links
 
-- **GitHub**: https://github.com/basepulse/agent
+- **GitHub**: https://github.com/Abuchtela/BasePulse
 - **Base Network**: https://base.org
 - **Clanker**: https://clanker.world
 - **OpenClaw**: https://openclaw.ai
