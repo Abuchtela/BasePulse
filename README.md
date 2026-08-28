@@ -82,8 +82,8 @@ cp .env.example .env.local
 # Set up database
 pnpm db:push
 
-# Start development server
-pnpm dev
+# Start BasePulse (development mode)
+pnpm run basepulse
 ```
 
 ## 🚀 Usage
@@ -92,7 +92,7 @@ pnpm dev
 
 ```bash
 # Development
-pnpm dev
+pnpm run basepulse
 
 # Production
 pnpm build
