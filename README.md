@@ -2,6 +2,11 @@
 
 BasePulse is a fully autonomous agent that monitors social trends on X and Farcaster, validates them against on-chain metrics, and autonomously deploys themed ERC20 tokens on the Base blockchain—all without human intervention.
 
+BasePulse also includes an isolated second prototype agent, **PulseIndex**, that
+turns user-defined portfolio rules into transparent simulated equity allocations.
+The original trend-to-token workflow remains Agent 01; PulseIndex is Agent 02 and
+is documented in [PULSEINDEX_AGENT.md](./PULSEINDEX_AGENT.md).
+
 ## 🚀 Key Features
 
 - **Autonomous Trend Monitoring**: Continuously scans X and Farcaster for Base ecosystem trends using LLM-powered sentiment analysis
@@ -11,18 +16,22 @@ BasePulse is a fully autonomous agent that monitors social trends on X and Farca
 - **Real-Time Dashboard**: Web-based interface for monitoring agent operations, deployed tokens, and treasury
 - **Community Interaction**: Autonomous social media posting and community engagement
 - **Comprehensive Logging**: Full audit trail of all decisions, deployments, and transactions
+- **PulseIndex Prototype**: Policy-checked, simulation-only personalized portfolio plans on a separate agent route
 
 ## 🏗️ Architecture
 
 BasePulse consists of three main components:
 
 ### 1. **Trend Monitor Skill**
+
 Analyzes social media posts using Claude AI to extract trending themes and sentiment scores. Validates trends against on-chain volume data before triggering deployments.
 
 ### 2. **Token Deployer Module**
+
 Handles autonomous ERC20 token deployment on Base using the Clanker SDK. Manages wallet interactions, transaction execution, and treasury accounting.
 
 ### 3. **Autonomous Loop Orchestrator**
+
 Coordinates the entire workflow, running at regular intervals to scan trends, validate them, and trigger deployments. Includes safety limits and error handling.
 
 ## 📊 On-Chain Primitives
@@ -38,6 +47,7 @@ BasePulse implements several key blockchain primitives:
 ## 🎯 Use Case: Autonomous Venture Agent
 
 Unlike traditional chatbots, BasePulse acts as a venture agent that:
+
 1. Identifies promising trends in the Base ecosystem
 2. Deploys capital (tokens) to capture those opportunities
 3. Manages the resulting treasury autonomously
@@ -57,6 +67,7 @@ This creates a self-sustaining economic loop where the agent generates value wit
 ## 📦 Installation
 
 ### Prerequisites
+
 - Node.js 22+
 - pnpm
 - MySQL database
@@ -102,6 +113,7 @@ pnpm start
 ### Access Dashboard
 
 Open `http://localhost:3000/dashboard` to monitor:
+
 - Deployed tokens and their performance
 - Treasury balance and transaction history
 - Real-time trend analysis and sentiment scores
@@ -114,11 +126,11 @@ Edit the configuration in `server/agent/autonomousLoop.ts`:
 ```typescript
 const config = {
   enabled: true,
-  intervalMinutes: 15,              // Run every 15 minutes
-  minSentimentScore: 60,            // 0-100 scale
-  minMentions: 5,                   // Minimum mentions
-  minVolume24hUSD: 100000,          // Minimum on-chain volume
-  maxDeploymentsPerDay: 10,         // Safety limit
+  intervalMinutes: 15, // Run every 15 minutes
+  minSentimentScore: 60, // 0-100 scale
+  minMentions: 5, // Minimum mentions
+  minVolume24hUSD: 100000, // Minimum on-chain volume
+  maxDeploymentsPerDay: 10, // Safety limit
 };
 ```
 
@@ -149,6 +161,7 @@ BasePulse uses the following main tables:
 ## 📈 Performance Metrics
 
 The dashboard displays:
+
 - Total tokens deployed
 - Treasury balance and growth
 - Deployment success rate
@@ -168,28 +181,36 @@ The dashboard displays:
 ## 🎮 Dashboard Features
 
 ### Pulse Board
+
 View all deployed tokens with:
+
 - Token name, symbol, and trend theme
 - Sentiment score and market cap
 - 24h volume and holder count
 - Current status (pending, deployed, active, inactive)
 
 ### Treasury Stats
+
 Monitor financial health:
+
 - Total available balance
 - Fee collection history
 - Reinvestment tracking
 - Transaction details
 
 ### Sentiment Meter
+
 Track trending themes:
+
 - Real-time sentiment scores
 - Mention counts
 - On-chain volume validation
 - Deployment triggers
 
 ### Community Interactions
+
 Engage with users:
+
 - Recent social media posts
 - Sentiment analysis (positive/neutral/negative)
 - Agent responses
@@ -200,16 +221,19 @@ Engage with users:
 This agent was built for the **Base Build OpenClaw Agent Competition** with a 5ETH prize pool. It demonstrates:
 
 ✅ **Implementation of On-Chain Primitives**
+
 - Token deployment with Uniswap V4
 - Treasury management on-chain
 - Fee collection and reinvestment
 
 ✅ **Novelty of Use Case**
+
 - Autonomous venture agent model
 - Trend-to-token pipeline
 - Self-sustaining economic loop
 
 ✅ **No-Human-In-The-Loop**
+
 - Fully autonomous decision-making
 - Autonomous social posting
 - Autonomous fund management
@@ -217,6 +241,7 @@ This agent was built for the **Base Build OpenClaw Agent Competition** with a 5E
 ## 📝 Building Process Documentation
 
 The development process included:
+
 1. Research on OpenClaw framework and Base ecosystem
 2. Design of autonomous agent architecture
 3. Implementation of trend analysis engine
@@ -229,6 +254,7 @@ See `AGENT_ARCHITECTURE.md` for detailed technical documentation.
 ## 🤝 Contributing
 
 Contributions are welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
@@ -247,6 +273,7 @@ MIT License - See LICENSE file for details
 ## 💬 Support
 
 For questions or issues:
+
 - Check the [Deployment Guide](./DEPLOYMENT_GUIDE.md)
 - Review [Agent Architecture](./AGENT_ARCHITECTURE.md)
 - Open an issue on GitHub
