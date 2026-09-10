@@ -147,6 +147,18 @@ export async function createTreasuryTransaction(tx: InsertTreasuryTransaction) {
   await db.insert(treasuryTransactions).values(tx);
 }
 
+export async function updateTreasuryTransactionByTxHash(
+  txHash: string,
+  updates: { status: "confirmed" | "failed"; tokenAddress?: string }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(treasuryTransactions)
+    .set(updates)
+    .where(eq(treasuryTransactions.txHash, txHash));
+}
+
 export async function getSocialInteractions(limit = 100) {
   const db = await getDb();
   if (!db) return [];

@@ -299,5 +299,5 @@ mysqldump -u user -p basepulse > basepulse-$(date +%Y%m%d).sql
 For issues or questions:
 1. Check logs: `tail -f ~/.openclaw/logs/agent.log`
 2. Review documentation: See `AGENT_ARCHITECTURE.md`
-3. Check GitHub issues: https://github.com/basepulse/agent
+3. Check GitHub issues: https://github.com/Abuchtela/BasePulse
 4. Contact support: support@basepulse.dev

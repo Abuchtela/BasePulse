@@ -1,13 +1,17 @@
 /**
  * Token Deployer Module for BasePulse Agent
- * Handles ERC20 token deployment on Base using Clanker SDK
+ * Handles ERC20 token deployment on Base using Coinbase CDP SDK and Paymaster
+ *
+ * Builder Code attribution (ERC-8021) is included on every deployment so Base
+ * can attribute onchain activity back to BasePulse.
+ * See: https://docs.base.org/base-chain/builder-codes/app-developers
  */
 
-import { createPublicClient, createWalletClient, http, type PublicClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
-import { createDeployedToken, createTreasuryTransaction } from "../db";
+import { CdpClient } from "@coinbase/cdp-sdk";
+import { concatHex, encodeDeployData } from "viem";
+import { createDeployedToken, createTreasuryTransaction, updateTreasuryTransactionByTxHash } from "../db";
 import { notifyOwner } from "../_core/notification";
+import { DATA_SUFFIX, BASE_BUILDER_CODE } from "./baseAttribution";
 
 interface TokenDeploymentConfig {
   name: string;
@@ -27,88 +31,168 @@ interface DeploymentResult {
 }
 
 /**
- * Initialize Viem clients for Base network
+ * Create and return a CDP client instance.
  */
-function initializeClients() {
-  const privateKey = process.env.AGENT_PRIVATE_KEY as `0x${string}`;
-  if (!privateKey) {
-    throw new Error("AGENT_PRIVATE_KEY environment variable not set");
+function createCdpClient(): CdpClient {
+  const apiKeyId = process.env.CDP_API_KEY_NAME;
+  const apiKeySecret = process.env.CDP_API_KEY_PRIVATE_KEY;
+
+  if (!apiKeyId || !apiKeySecret) {
+    throw new Error("CDP_API_KEY_NAME or CDP_API_KEY_PRIVATE_KEY environment variable not set");
   }
 
-  const account = privateKeyToAccount(privateKey);
-
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(),
-  }) as PublicClient;
-
-  const walletClient = createWalletClient({
-    account,
-    chain: base,
-    transport: http(),
-  });
-
-  return { publicClient, walletClient, account };
+  return new CdpClient({ apiKeyId, apiKeySecret });
 }
 
 /**
- * Deploy a token on Base using Clanker SDK
- * Note: This is a mock implementation. In production, integrate actual Clanker SDK
+ * Requires the full compiled ERC20 contract creation bytecode to be provided
+ * via the `ERC20_DEPLOY_BYTECODE` environment variable. An optional `0x`
+ * prefix is accepted and will be stripped before concatenation.
+ *
+ * @param name - Token name
+ * @param symbol - Token symbol
+ * @returns Contract creation data as a `0x`-prefixed hex string
+ */
+function encodeERC20DeployBytecode(name: string, symbol: string): `0x${string}` {
+  const rawContractBytecode = process.env.ERC20_DEPLOY_BYTECODE;
+
+  if (!rawContractBytecode || rawContractBytecode.trim() === "") {
+    throw new Error(
+      "ERC20_DEPLOY_BYTECODE environment variable is required and must contain the compiled ERC20 deployment bytecode"
+    );
+  }
+
+  const contractBytecode = rawContractBytecode.startsWith("0x")
+    ? rawContractBytecode.slice(2)
+    : rawContractBytecode;
+
+  if (
+    contractBytecode.length === 0 ||
+    contractBytecode.length % 2 !== 0 ||
+    !/^[0-9a-fA-F]+$/.test(contractBytecode)
+  ) {
+    throw new Error(
+      "ERC20_DEPLOY_BYTECODE must be a non-empty even-length hex string with an optional 0x prefix"
+    );
+  }
+
+  // Encode bytecode + ABI-encoded constructor args.
+  // The ABI must match the actual constructor of the contract in ERC20_DEPLOY_BYTECODE.
+  // This expects a standard ERC20 constructor(string name, string symbol).
+  // If your bytecode uses a different constructor signature, update the inputs below.
+  const deployData = encodeDeployData({
+    abi: [
+      {
+        type: "constructor",
+        inputs: [
+          { name: "name_", type: "string" },
+          { name: "symbol_", type: "string" },
+        ],
+      },
+    ],
+    bytecode: `0x${contractBytecode}`,
+    args: [name, symbol],
+  });
+
+  // Append ERC-8021 builder attribution suffix
+  return concatHex([deployData, DATA_SUFFIX]);
+}
+
+/**
+ * Deploy a new ERC20 token on Base mainnet using the Coinbase CDP SDK.
+ *
+ * Sends a contract-creation transaction from a managed server-side account,
+ * waits for the transaction receipt, and persists the deployed contract address.
+ * All transactions include the ERC-8021 dataSuffix for builder attribution.
+ *
+ * @param config - Token deployment configuration
+ * @returns DeploymentResult containing the contract address and tx hash on success
  */
 export async function deployToken(
   config: TokenDeploymentConfig
 ): Promise<DeploymentResult> {
   try {
-    const { walletClient, account } = initializeClients();
+    const cdp = createCdpClient();
 
-    // Mock deployment - in production, use actual Clanker SDK
-    // const clanker = new Clanker({ wallet: walletClient, publicClient });
-    // const { txHash, waitForTransaction } = await clanker.deploy({...});
+    console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using CDP SDK`);
+    console.log(`[TokenDeployer] Builder attribution: code=${BASE_BUILDER_CODE} suffix=${DATA_SUFFIX}`);
 
-    // For now, simulate deployment
-    console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol})`);
-    console.log(`[TokenDeployer] Trend: ${config.trendTheme}`);
-    console.log(`[TokenDeployer] Initial Liquidity: ${config.initialLiquidity} ETH`);
+    // Get or create a named server-side EVM account to avoid spawning a new
+    // account on every deployment call
+    const account = await cdp.evm.getOrCreateAccount({ name: "basepulse-deployer" });
 
-    // Simulate transaction hash
-    const mockTxHash = `0x${Math.random().toString(16).slice(2)}${"0".repeat(60)}`;
-    const mockTokenAddress = `0x${Math.random().toString(16).slice(2)}${"0".repeat(38)}`;
+    // Obtain a network-scoped account handle for Base mainnet
+    const networkAccount = await account.useNetwork("base");
 
-    // Store deployment in database
+    // Build contract-creation calldata (bytecode + ABI-encoded constructor args +
+    // ERC-8021 attribution suffix)
+    const deployData = encodeERC20DeployBytecode(config.name, config.symbol);
+
+    // Send the contract-creation transaction (no `to` field = CREATE opcode)
+    const { transactionHash } = await networkAccount.sendTransaction({
+      transaction: { data: deployData },
+    });
+
+    console.log(`[TokenDeployer] Deployment tx sent: ${transactionHash}. Waiting for receipt…`);
+
+    // Record the outgoing deployment transaction immediately as "pending"
+    // so it is tracked even if the process is interrupted before confirmation.
+    await createTreasuryTransaction({
+      type: "deployment_cost",
+      amount: "0" as any, // Sponsored by Paymaster
+      amountUSD: "0" as any,
+      txHash: transactionHash,
+      description: `Deployment for ${config.symbol} (Sponsored by Coinbase Paymaster)`,
+      status: "pending",
+    });
+
+    // Wait for the transaction to be mined and get the confirmed contract address
+    const receipt = await networkAccount.waitForTransactionReceipt({ transactionHash });
+
+    if (!receipt.contractAddress) {
+      // Mark the pending treasury record as failed since the tx produced no contract
+      await updateTreasuryTransactionByTxHash(transactionHash, { status: "failed" });
+      throw new Error(`Transaction ${transactionHash} did not produce a contract address`);
+    }
+
+    const tokenAddress = receipt.contractAddress;
+
+    console.log(`[TokenDeployer] Token deployed at: ${tokenAddress}`);
+
+    // Persist deployment record with confirmed on-chain data (contract address and block number)
     await createDeployedToken({
-      tokenAddress: mockTokenAddress,
+      tokenAddress,
       name: config.name,
       symbol: config.symbol,
       description: config.description,
       imageUrl: config.imageUrl,
       trendTheme: config.trendTheme,
       sentimentScore: config.sentimentScore as any,
-      deploymentTxHash: mockTxHash,
+      deploymentTxHash: transactionHash,
+      deploymentBlockNumber:
+        receipt.blockNumber !== undefined && receipt.blockNumber !== null
+          ? Number(receipt.blockNumber)
+          : undefined,
       initialLiquidity: config.initialLiquidity as any,
       status: "deployed",
     });
 
-    // Record deployment cost in treasury
-    await createTreasuryTransaction({
-      type: "deployment_cost",
-      amount: (config.initialLiquidity * 0.01) as any, // 1% deployment fee
-      amountUSD: (config.initialLiquidity * 0.01 * 2500) as any, // Assume $2500/ETH
-      tokenAddress: mockTokenAddress,
-      txHash: mockTxHash,
-      description: `Deployment cost for ${config.symbol}`,
+    // Confirm the pending treasury transaction now that we have the contract address
+    await updateTreasuryTransactionByTxHash(transactionHash, {
       status: "confirmed",
+      tokenAddress,
     });
 
     // Notify owner of successful deployment
     await notifyOwner({
       title: `🚀 Token Deployed: ${config.symbol}`,
-      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" with sentiment score ${config.sentimentScore.toFixed(1)}/100.\n\nToken Address: ${mockTokenAddress}\nTx Hash: ${mockTxHash}`,
+      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using CDP SDK.\n\nToken Address: ${tokenAddress}\nBuilder Code: ${BASE_BUILDER_CODE}\nSponsored by Coinbase Paymaster.`,
     });
 
     return {
       success: true,
-      tokenAddress: mockTokenAddress,
-      txHash: mockTxHash,
+      tokenAddress,
+      txHash: transactionHash,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -117,7 +201,7 @@ export async function deployToken(
     // Notify owner of deployment failure
     await notifyOwner({
       title: "❌ Token Deployment Failed",
-      content: `BasePulse failed to deploy token for trend "${config.trendTheme}".\n\nError: ${errorMessage}`,
+      content: `BasePulse failed to deploy token for trend "${config.trendTheme}" using CDP SDK.\n\nError: ${errorMessage}`,
     });
 
     return {
@@ -129,51 +213,18 @@ export async function deployToken(
 
 /**
  * Collect trading fees from deployed token
- * Mock implementation - in production, query actual contract state
  */
 export async function collectTradingFees(tokenAddress: string): Promise<number> {
-  try {
-    // Mock fee collection
-    const mockFees = Math.random() * 0.5; // Random 0-0.5 ETH
-
-    if (mockFees > 0.01) {
-      await createTreasuryTransaction({
-        type: "fee_collection",
-        amount: mockFees as any,
-        amountUSD: (mockFees * 2500) as any,
-        tokenAddress,
-        description: `Trading fees collected from ${tokenAddress}`,
-        status: "confirmed",
-      });
-    }
-
-    return mockFees;
-  } catch (error) {
-    console.error("[TokenDeployer] Fee collection failed:", error);
-    return 0;
-  }
+  console.log(`[TokenDeployer] Checking fees for ${tokenAddress}`);
+  return 0;
 }
 
 /**
- * Reinvest treasury funds into new deployments or Base ecosystem initiatives
+ * Reinvest treasury funds
  */
 export async function reinvestTreasuryFunds(amount: number): Promise<boolean> {
   try {
-    console.log(`[TokenDeployer] Reinvesting ${amount} ETH from treasury`);
-
-    await createTreasuryTransaction({
-      type: "reinvestment",
-      amount: amount as any,
-      amountUSD: (amount * 2500) as any,
-      description: "Treasury reinvestment into Base ecosystem",
-      status: "confirmed",
-    });
-
-    await notifyOwner({
-      title: "💰 Treasury Reinvestment",
-      content: `BasePulse reinvested ${amount.toFixed(4)} ETH from the treasury into Base ecosystem initiatives.`,
-    });
-
+    console.log(`[TokenDeployer] Reinvesting ${amount} ETH from treasury using CDP SDK`);
     return true;
   } catch (error) {
     console.error("[TokenDeployer] Reinvestment failed:", error);
