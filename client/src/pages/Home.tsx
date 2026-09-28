@@ -1,8 +1,16 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
-import { TrendingUp, Zap, BarChart3, Shield } from "lucide-react";
+import {
+  TrendingUp,
+  Zap,
+  BarChart3,
+  Shield,
+  Bot,
+  ArrowRight,
+} from "lucide-react";
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -19,6 +27,13 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             <Button
+              onClick={() => navigate("/pulseindex")}
+              variant="outline"
+              className="border-cyan-800 text-cyan-300 hover:bg-cyan-950"
+            >
+              PulseIndex
+            </Button>
+            <Button
               onClick={() => navigate("/registry")}
               variant="outline"
               className="border-slate-600 hover:bg-slate-800 text-emerald-400 border-emerald-800"
@@ -27,7 +42,9 @@ export default function Home() {
             </Button>
             {isAuthenticated ? (
               <>
-                <span className="text-sm text-slate-400">Welcome, {user?.name || "User"}</span>
+                <span className="text-sm text-slate-400">
+                  Welcome, {user?.name || "User"}
+                </span>
                 <Button
                   onClick={() => navigate("/dashboard")}
                   className="bg-blue-600 hover:bg-blue-700"
@@ -63,7 +80,9 @@ export default function Home() {
             Autonomous Trend-to-Token Engine
           </h2>
           <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-            BasePulse monitors social trends on X and Farcaster, validates them against on-chain metrics, and autonomously deploys themed tokens on Base—all without human intervention.
+            BasePulse monitors social trends on X and Farcaster, validates them
+            against on-chain metrics, and autonomously deploys themed tokens on
+            Base—all without human intervention.
           </p>
           {!isAuthenticated && (
             <Button
@@ -84,7 +103,8 @@ export default function Home() {
             <TrendingUp className="w-8 h-8 text-blue-500 mb-4" />
             <h3 className="font-semibold mb-2">Trend Monitoring</h3>
             <p className="text-sm text-slate-400">
-              Continuously scans X and Farcaster for emerging Base ecosystem trends with LLM-powered sentiment analysis.
+              Continuously scans X and Farcaster for emerging Base ecosystem
+              trends with LLM-powered sentiment analysis.
             </p>
           </div>
 
@@ -92,7 +112,8 @@ export default function Home() {
             <BarChart3 className="w-8 h-8 text-purple-500 mb-4" />
             <h3 className="font-semibold mb-2">On-Chain Validation</h3>
             <p className="text-sm text-slate-400">
-              Cross-references social trends with DexScreener metrics to validate deployment thresholds.
+              Cross-references social trends with DexScreener metrics to
+              validate deployment thresholds.
             </p>
           </div>
 
@@ -100,7 +121,8 @@ export default function Home() {
             <Zap className="w-8 h-8 text-pink-500 mb-4" />
             <h3 className="font-semibold mb-2">Autonomous Deployment</h3>
             <p className="text-sm text-slate-400">
-              Deploys ERC20 tokens with Uniswap V4 liquidity pools using Clanker SDK when conditions are met.
+              Deploys ERC20 tokens with Uniswap V4 liquidity pools using Clanker
+              SDK when conditions are met.
             </p>
           </div>
 
@@ -108,8 +130,51 @@ export default function Home() {
             <Shield className="w-8 h-8 text-green-500 mb-4" />
             <h3 className="font-semibold mb-2">Treasury Management</h3>
             <p className="text-sm text-slate-400">
-              Collects trading fees and reinvests them into Base ecosystem initiatives autonomously.
+              Collects trading fees and reinvests them into Base ecosystem
+              initiatives autonomously.
             </p>
+          </div>
+        </div>
+
+        {/* Agent Network */}
+        <div className="mb-16 rounded-2xl border border-cyan-900/70 bg-cyan-950/20 p-8">
+          <div className="mb-6 flex items-center gap-3">
+            <Bot className="h-6 w-6 text-cyan-400" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">
+                BasePulse Agent Network
+              </p>
+              <h3 className="text-2xl font-bold">
+                A second agent, without replacing the first.
+              </h3>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+              <Badge className="mb-3 bg-blue-950 text-blue-300">
+                Agent 01 · Active
+              </Badge>
+              <h4 className="mb-2 text-lg font-semibold">Trend Launch Agent</h4>
+              <p className="text-sm leading-6 text-slate-400">
+                The original autonomous trend-to-token workflow remains intact.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/pulseindex")}
+              className="group rounded-xl border border-cyan-800 bg-slate-900/70 p-5 text-left transition hover:border-cyan-500"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <Badge className="bg-cyan-950 text-cyan-300">
+                  Agent 02 · Prototype
+                </Badge>
+                <ArrowRight className="h-4 w-4 text-cyan-400 transition group-hover:translate-x-1" />
+              </div>
+              <h4 className="mb-2 text-lg font-semibold">PulseIndex Agent</h4>
+              <p className="text-sm leading-6 text-slate-400">
+                Turns user rules into transparent, policy-checked simulated
+                equity portfolios.
+              </p>
+            </button>
           </div>
         </div>
 
@@ -130,7 +195,9 @@ export default function Home() {
                 </div>
                 <h4 className="font-semibold mb-1">{item.title}</h4>
                 <p className="text-xs text-slate-400">{item.desc}</p>
-                {idx < 4 && <div className="hidden md:block absolute w-8 h-0.5 bg-slate-600 mt-6 ml-6" />}
+                {idx < 4 && (
+                  <div className="hidden md:block absolute w-8 h-0.5 bg-slate-600 mt-6 ml-6" />
+                )}
               </div>
             ))}
           </div>
@@ -141,19 +208,27 @@ export default function Home() {
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 text-center">
             <div className="text-4xl font-bold text-blue-500 mb-2">100%</div>
             <p className="text-slate-400">Autonomous Operations</p>
-            <p className="text-xs text-slate-500 mt-2">No human intervention required</p>
+            <p className="text-xs text-slate-500 mt-2">
+              No human intervention required
+            </p>
           </div>
 
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 text-center">
-            <div className="text-4xl font-bold text-purple-500 mb-2">&lt;$0.01</div>
+            <div className="text-4xl font-bold text-purple-500 mb-2">
+              &lt;$0.01
+            </div>
             <p className="text-slate-400">Deployment Cost</p>
-            <p className="text-xs text-slate-500 mt-2">Ultra-low Base network fees</p>
+            <p className="text-xs text-slate-500 mt-2">
+              Ultra-low Base network fees
+            </p>
           </div>
 
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 text-center">
             <div className="text-4xl font-bold text-pink-500 mb-2">24/7</div>
             <p className="text-slate-400">Continuous Monitoring</p>
-            <p className="text-xs text-slate-500 mt-2">Always scanning for opportunities</p>
+            <p className="text-xs text-slate-500 mt-2">
+              Always scanning for opportunities
+            </p>
           </div>
         </div>
       </section>
@@ -162,7 +237,9 @@ export default function Home() {
       <footer className="border-t border-slate-700 bg-slate-900/50 mt-20 py-8">
         <div className="max-w-7xl mx-auto px-6 text-center text-slate-400 text-sm">
           <p>BasePulse - Autonomous Trend-to-Token Engine for Base Ecosystem</p>
-          <p className="mt-2">Built for the Base Build OpenClaw Agent Competition</p>
+          <p className="mt-2">
+            Built for the Base Build OpenClaw Agent Competition
+          </p>
         </div>
       </footer>
     </div>
