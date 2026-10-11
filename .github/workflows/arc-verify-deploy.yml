@@ -30,6 +30,19 @@ jobs:
         run: pnpm exec vitest run server/arc/arcTreasury.test.ts
       - name: Typecheck
         run: pnpm check
+      - name: Validate demo JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          content = Path("docs/arc-demo/index.html").read_text()
+          scripts = re.findall(r'<script\\b[^>]*>(.*?)</script>', content, flags=re.DOTALL | re.IGNORECASE)
+          assert len(scripts) == 1, "Expected one inline demo script"
+          Path("/tmp/arc-demo.mjs").write_text(scripts[0])
+          PY
+          node --check /tmp/arc-demo.mjs
+      - name: Production build
+        run: pnpm build
       - name: Verify live Arc mainnet and testnet RPC
         run: node scripts/check-arc-rpc.mjs
 
