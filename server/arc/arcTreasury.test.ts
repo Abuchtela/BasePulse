@@ -13,7 +13,7 @@ const transferAbi = [{ type: "event", name: "Transfer", inputs: [
 describe("Arc read-only USDC treasury", () => {
   it("uses the confirmed testnet chain", () => {
     expect(getArcNetwork("testnet").id).toBe(5042002);
-    expect(getArcNetwork("testnet").rpc).toBe("https://rpc.testnet.arc.network");
+    expect(getArcNetwork("testnet").rpc).toBe("https://rpc.testnet.arc.io");
   });
   it("keeps native 18 decimals separate from token 6 decimals", () => {
     expect(formatArcNativeUsdc(1230000000000000000n)).toBe("1.23");
