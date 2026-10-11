@@ -1,0 +1,56 @@
+name: Arc treasury verify and publish
+on:
+  push:
+    branches:
+      - feature/arc-usdc-treasury
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies from lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Arc unit tests
+        run: pnpm exec vitest run server/arc/arcTreasury.test.ts
+      - name: Typecheck
+        run: pnpm check
+      - name: Verify live Arc mainnet and testnet RPC
+        run: node scripts/check-arc-rpc.mjs
+
+  publish-arc-demo:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload static Arc demo
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/arc-demo
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
