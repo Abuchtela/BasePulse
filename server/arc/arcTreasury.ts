@@ -153,8 +153,7 @@ export async function getArcStatus(network: ArcNetwork) {
 export async function getArcTreasuryBalance(network: ArcNetwork, address: string) {
   const owner = normalizeArcAddress(address);
   const client = await checkedClient(network);
-  const [nativeBalance, erc20Balance, blockNumber] = await Promise.all([
-    client.getBalance({ address: owner }),
+  const [erc20Balance, blockNumber] = await Promise.all([
     client.readContract({
       address: ARC_USDC_ADDRESS,
       abi: usdcBalanceAbi,
@@ -169,8 +168,7 @@ export async function getArcTreasuryBalance(network: ArcNetwork, address: string
     address: owner,
     blockNumber: blockNumber.toString(),
     usdcBalance: formatArcTokenUsdc(erc20Balance),
-    nativeGasBalanceUsdc: formatArcNativeUsdc(nativeBalance),
-    note: "USDC token and native gas balances are two representations of Arc USDC. Do not sum them.",
+    note: "The same USDC pays transaction fees; this balance is the six-decimal ERC-20 view.",
     explorerUrl: `${networks[network].explorer}/address/${owner}`,
   };
 }
