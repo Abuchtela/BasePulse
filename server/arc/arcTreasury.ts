@@ -26,15 +26,15 @@ const networks = {
   mainnet: {
     id: 5042,
     label: "Arc Mainnet",
-    rpc: "",
-    explorer: "",
+    rpc: "https://rpc.mainnet.arc.io",
+    explorer: "https://explorer.arc.io",
     env: "ARC_MAINNET_RPC_URL",
   },
   testnet: {
     id: 5042002,
     label: "Arc Testnet",
-    rpc: "https://rpc.testnet.arc.network",
-    explorer: "https://testnet.arcscan.app",
+    rpc: "https://rpc.testnet.arc.io",
+    explorer: "https://explorer.testnet.arc.io",
     env: "ARC_TESTNET_RPC_URL",
   },
 } as const;
