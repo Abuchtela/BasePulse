@@ -26,15 +26,15 @@ const networks = {
   mainnet: {
     id: 5042,
     label: "Arc Mainnet",
-    rpc: "https://rpc.mainnet.arc.io",
-    explorer: "https://explorer.arc.io",
+    rpc: "",
+    explorer: "",
     env: "ARC_MAINNET_RPC_URL",
   },
   testnet: {
     id: 5042002,
     label: "Arc Testnet",
-    rpc: "https://rpc.testnet.arc.io",
-    explorer: "https://explorer.testnet.arc.io",
+    rpc: "https://rpc.testnet.arc.network",
+    explorer: "https://testnet.arcscan.app",
     env: "ARC_TESTNET_RPC_URL",
   },
 } as const;
@@ -67,7 +67,8 @@ export function getArcNetwork(network: ArcNetwork) {
 
 function createArcClient(network: ArcNetwork) {
   const config = getArcNetwork(network);
-  const endpoint = process.env[config.env] || config.rpc;
+  const endpoint = process.env[config.env] || config.rpc; 
+  if (!endpoint) throw new Error("Arc mainnet RPC must be configured explicitly");
   if (!/^https:\/\//i.test(endpoint)) {
     throw new Error("Arc RPC URL must use HTTPS");
   }
