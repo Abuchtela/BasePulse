@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="BasePulse Arc Treasury: read-only, verifiable Arc USDC balances and transaction receipts.">
+  <title>BasePulse / Arc USDC Treasury</title>
+  <style>
+    :root { color-scheme: dark; --bg:#071015; --panel:#102027; --muted:#a0b3be; --mint:#56e3b3; --line:#28434b; --red:#ffa297; }
+    * { box-sizing:border-box; } body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(ellipse at 80% -10%,#183b3e 0,transparent 48%),var(--bg);color:#eff9f7;}
+    main{max-width:1000px;margin:0 auto;padding:52px 22px 80px;} .eyebrow{letter-spacing:.18em;text-transform:uppercase;color:var(--mint);font-weight:750;font-size:12px;}
+    h1{font-size:clamp(36px,6vw,66px);line-height:1.08;letter-spacing:-.045em;margin:15px 0;} p{color:var(--muted);max-width:670px;}
+    header{padding-bottom:30px;border-bottom:1px solid var(--line);} .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;font-size:12px;color:var(--muted);}
+    .dot{background:var(--mint);height:7px;width:7px;border-radius:50%} .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-top:22px;}
+    section{border:1px solid var(--line);border-radius:18px;padding:24px;background:var(--panel);min-width:0;} h2{font-size:17px;margin:0 0 15px;} label{font-size:13px;color:var(--muted);display:block;margin:15px 0 7px;}
+    input,select{width:100%;background:#061216;border:1px solid #3a5961;color:#eff9f7;padding:13px;border-radius:9px;font:inherit;outline-offset:3px}
+    button{border:0;background:var(--mint);color:#06231e;font-weight:750;font:inherit;font-weight:700;padding:12px 20px;border-radius:9px;cursor:pointer;margin-top:14px}
+    button:disabled{opacity:.6;cursor:wait} a{color:var(--mint);overflow-wrap:anywhere} .metric{font-size:32px;font-variant-numeric:tabular-nums;font-weight:750;letter-spacing:-.025em}
+    .hint{font-size:12px;color:var(--muted);} .result{white-space:pre-wrap;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;padding:12px;background:#07171c;border-radius:8px;border:1px solid var(--line);max-height:330px;overflow-y:auto;color:#d5eee7;}
+    .error{color:var(--red)} .meta{font-size:13px;color:var(--muted)} strong{color:#eff9f7} footer{margin-top:30px;color:var(--muted);font-size:13px;}
+  </style>
+</head>
+<body>
+<main>
+<header>
+  <div class="eyebrow">BASEPULSE &nbsp; / &nbsp; ARC INTEGRATION</div>
+  <h1>USDC treasury.<br>Onchain evidence.</h1>
+  <p>A live, read-only Arc mainnet explorer for USDC balances and payment receipts. Queries go directly to Arc RPC. No simulated transactions. No wallet connection or private keys required.</p>
+  <span class="pill"><span class="dot"></span><span id="connection">Checking Arc mainnet…</span></span>
+</header>
+<div class="grid">
+  <section>
+    <h2>Network identity</h2>
+    <div class="hint">Chain ID</div><div class="metric" id="chain">—</div>
+    <div class="hint">Latest block</div><div class="metric" id="block">—</div>
+    <p class="hint" id="network-status" role="status">Live chain verification not yet completed.</p>
+    <button type="button" id="refresh">Verify network</button>
+  </section>
+  <section>
+    <h2>USDC treasury lookup</h2>
+    <label for="wallet">Public Arc wallet address</label>
+    <input id="wallet" placeholder="0x…" spellcheck="false" autocomplete="off" maxlength="42">
+    <button type="button" id="lookup">Read USDC balance</button>
+    <p class="hint">One 6-decimal ERC-20 view of Arc USDC. Native gas uses the same funds and is not counted separately.</p>
+    <div class="metric" id="balance">—</div>
+    <div id="wallet-link" class="meta"></div>
+    <p id="wallet-status" class="hint" role="status"></p>
+  </section>
+  <section style="grid-column:1/-1">
+    <h2>Transaction receipt verifier</h2>
+    <label for="hash">Arc mainnet transaction hash</label>
+    <input id="hash" placeholder="0x + 64 hexadecimal characters" spellcheck="false" autocomplete="off" maxlength="66">
+    <button type="button" id="verify">Verify onchain transaction</button>
+    <p class="hint">Reports mined status, gas fee in USDC and ERC-20 USDC Transfer events from the Circle USDC predeploy. Native-only transfers may not appear in the ERC-20 event list.</p>
+    <div class="result" id="receipt" role="status">Enter a transaction hash to read its onchain receipt.</div>
+    <div id="tx-link" class="meta"></div>
+  </section>
+</div>
+<footer>
+  <p>Arc mainnet · Chain ID 5042 · USDC predeploy 0x3600000000000000000000000000000000000000. This dashboard is read-only and makes no claims about transferred funds beyond RPC evidence.</p>
+  <a href="https://github.com/Abuchtela/BasePulse/tree/feature/arc-usdc-treasury" target="_blank" rel="noreferrer">Source code</a> ·
+  <a href="https://explorer.arc.io" target="_blank" rel="noreferrer">Arc Explorer</a>
+</footer>
+</main>
+<script type="module">
+  const RPC = "https://rpc.mainnet.arc.io";
+  const CHAIN_ID = 5042n;
+  const USDC = "0x3600000000000000000000000000000000000000";
+  const TOPIC_TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+  const $ = (id) => document.getElementById(id);
+  const fmt = (units, places) => {
+    const neg = units < 0n; if (neg) units = -units;
+    const base = 10n ** BigInt(places);
+    let frac = (units % base).toString().padStart(places, "0").replace(/0+$/, "");
+    return (neg ? "-" : "") + (units / base).toString() + (frac ? "." + frac : "");
+  };
+  const validAddr = /^0x[0-9a-fA-F]{40}$/;
+  const validHash = /^0x[0-9a-fA-F]{64}$/;
+  async function rpc(method, params = []) {
+    const response = await fetch(RPC, {
+      method: "POST", headers: {"content-type": "application/json"},
+      body: JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!response.ok) throw new Error("Arc RPC returned HTTP " + response.status);
+    const payload = await response.json();
+    if (payload.error) throw new Error(payload.error.message || "RPC rejected request");
+    if (payload.result === undefined) throw new Error("Malformed RPC response");
+    return payload.result;
+  }
+  async function chainCheck() {
+    const chain = BigInt(await rpc("eth_chainId"));
+    if (chain !== CHAIN_ID) throw new Error("Unexpected RPC chain ID: " + chain);
+    return chain;
+  }
+  function link(el, url, label) {
+    el.textContent = "";
+    const a = document.createElement("a");
+    a.href = url; a.textContent = label; a.target = "_blank"; a.rel="noopener noreferrer";
+    el.append(a);
+  }
+  async function refresh() {
+    $("connection").textContent = "Verifying Arc mainnet…";
+    $("network-status").textContent = "";
+    try {
+      const chain = await chainCheck();
+      const block = BigInt(await rpc("eth_blockNumber"));
+      $("chain").textContent = chain.toString();
+      $("block").textContent = block.toLocaleString("en-US");
+      $("connection").textContent = "Verified live Arc mainnet";
+      $("network-status").textContent = "Confirmed by RPC; no sample or cached block data.";
+    } catch(e) {
+      $("connection").textContent = "RPC unavailable";
+      $("chain").textContent = "—"; $("block").textContent = "—";
+      $("network-status").textContent = "Network verification failed: " + e.message;
+      $("network-status").classList.add("error");
+    }
+  }
+  async function lookup() {
+    const address = $("wallet").value.trim();
+    $("wallet-status").textContent="";
+    $("balance").textContent="—"; $("wallet-link").textContent="";
+    if (!validAddr.test(address)) { $("wallet-status").textContent="Enter a valid public 0x address."; return; }
+    try {
+      await chainCheck();
+      const callData = "0x70a08231" + address.slice(2).toLowerCase().padStart(64,"0");
+      const result = await rpc("eth_call", [{to: USDC, data:callData}, "latest"]);
+      if (typeof result !== "string" || !/^0x[0-9a-fA-F]+$/.test(result)) throw new Error("Invalid balance result");
+      $("balance").textContent = fmt(BigInt(result),6) + " USDC";
+      $("wallet-status").textContent = "Read live from Arc's USDC ERC-20 balanceOf.";
+      link($("wallet-link"),"https://explorer.arc.io/address/"+address,"Inspect address on Arc Explorer");
+    } catch(e) {
+      $("wallet-status").textContent = "Unable to read balance: " + e.message;
+      $("wallet-status").classList.add("error");
+    }
+  }
+  async function verify() {
+    const hash = $("hash").value.trim();
+    $("tx-link").textContent="";
+    if (!validHash.test(hash)) { $("receipt").textContent="Enter a valid 0x-prefixed 32-byte transaction hash.";return;}
+    $("receipt").textContent="Reading Arc receipt…";
+    try {
+      await chainCheck();
+      const receipt = await rpc("eth_getTransactionReceipt", [hash]);
+      if (!receipt) { $("receipt").textContent="Not found on Arc mainnet. Check the network and hash."; return; }
+      if (receipt.transactionHash?.toLowerCase() !== hash.toLowerCase()) throw new Error("Transaction hash mismatch");
+      const tx = await rpc("eth_getTransactionByHash", [hash]);
+      const transfers = (receipt.logs || []).filter(log =>
+        log.address?.toLowerCase() === USDC.toLowerCase() &&
+        log.topics?.length === 3 &&
+        log.topics[0].toLowerCase() === TOPIC_TRANSFER &&
+        /^0x[0-9a-fA-F]{64}$/.test(log.data || "")
+      ).map(log => ({
+        from:"0x"+log.topics[1].slice(-40),
+        to:"0x"+log.topics[2].slice(-40),
+        usdc:fmt(BigInt(log.data),6)
+      }));
+      const proof = {
+        chain:"Arc Mainnet (5042)",
+        transactionHash: hash,
+        mined: receipt.status === "0x1" ? "success" : "reverted",
+        block: BigInt(receipt.blockNumber).toString(),
+        from: receipt.from,
+        to: receipt.to,
+        nativeValueUsdc: tx?.value ? fmt(BigInt(tx.value),18) : null,
+        networkFeeUsdc: fmt(BigInt(receipt.gasUsed)*BigInt(receipt.effectiveGasPrice),18),
+        erc20UsdcTransfers: transfers,
+        transferNote:"ERC-20 predeploy events only; excludes native-only system-emitter transfers"
+      };
+      $("receipt").textContent = JSON.stringify(proof,null,2);
+      link($("tx-link"),"https://explorer.arc.io/tx/"+hash,"Open verified transaction in Arc Explorer");
+    } catch(e) {
+      $("receipt").textContent="Verification failed: " + e.message;
+    }
+  }
+  $("refresh").addEventListener("click",refresh);
+  $("lookup").addEventListener("click",lookup);
+  $("verify").addEventListener("click",verify);
+  refresh();
+</script>
+</body>
+</html>
