@@ -5,6 +5,7 @@
  */
 const RPC = "https://rpc.mainnet.arc.io";
 const READ_RPCS = [RPC, "https://rpc.arc-scan.org"];
+const WALLET_ALTERNATE_RPC = "https://arc-rpc.publicnode.com";
 const ARC_ID = "0x13b2"; // 5042
 const $ = (id) => document.getElementById(id);
 const HEX_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -300,9 +301,19 @@ async function diagnoseWallet() {
       if (!block?.number) throw new Error("Empty block response");
       show("wallet-diagnostics", "Arc RPC and wallet network both respond. Latest wallet block: " + BigInt(block.number).toString() + ". If you already deployed, check wallet history for a contract-creation transaction hash.");
     } catch (error) {
+      let alternative = "Another public Arc RPC is available but wasn't validated from this browser.";
+      try {
+        const chain = await callEndpoint(WALLET_ALTERNATE_RPC, "eth_chainId");
+        const latest = await callEndpoint(WALLET_ALTERNATE_RPC, "eth_getBlockByNumber", ["latest", false]);
+        if (BigInt(chain) === 5042n && latest?.number) {
+          alternative = "Alternative verified from this browser: " + WALLET_ALTERNATE_RPC + " (block " + BigInt(latest.number).toString() + ").";
+        }
+      } catch {}
       throw new Error("Arc read RPC works, but your WALLET'S RPC failed reading a block: " +
         (error?.message || String(error)) +
-        ". Edit Arc Mainnet network in your wallet; set the RPC URL to https://rpc.mainnet.arc.io. Do not use the read-only fallback RPC to send transactions. Reopen this page in your wallet browser.");
+        ". " + alternative +
+        " Go to your wallet's Arc Mainnet network settings and change its RPC URL to " + WALLET_ALTERNATE_RPC +
+        ". Reopen the wallet browser and rerun this diagnostic. Check your existing deployment transaction history BEFORE retrying a paid deployment.");
     }
   } catch (error) {
     show("wallet-diagnostics", error?.message || String(error), true);
