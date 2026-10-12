@@ -31,6 +31,7 @@ async function callEndpoint(endpoint, method, params = []) {
  */
 async function rpc(method, params = []) {
   let lastError;
+  let missingReceipt = false;
   for (const endpoint of READ_RPCS) {
     try {
       if (!rpcApproved.has(endpoint)) {
@@ -39,13 +40,14 @@ async function rpc(method, params = []) {
         rpcApproved.add(endpoint);
       }
       const result = await callEndpoint(endpoint, method, params);
-      if (result === null && method === "eth_getTransactionReceipt") continue;
+      if (result === null && method === "eth_getTransactionReceipt") { missingReceipt = true; continue; }
       return result;
     } catch (error) {
       lastError = error;
       // The next provider is only for reading and verifying chain data.
     }
   }
+  if (missingReceipt) return null;
   throw new Error("Arc read RPC endpoints unavailable: " + (lastError?.message || "Unknown error"));
 }
 
@@ -148,6 +150,8 @@ async function deployRegistry() {
       params: [{ from: account, data: artifact.bytecode, value: "0x0" }],
     });
     txLink("deploy-tx-link", hash);
+    try { localStorage.setItem("basepulse-arc-deployment-hash", hash); } catch {}
+    $("existing-deploy-hash").value = hash;
     show("deploy-status", "Transaction sent: " + hash + ". Verifying deployment receipt…");
     const receipt = await awaitReceipt(hash);
     if (receipt.status !== "0x1" || !HEX_ADDRESS.test(receipt.contractAddress || "")) {
@@ -229,6 +233,51 @@ async function recordProof() {
   }
 }
 
+
+async function verifyExistingDeployment() {
+  const hash = $("existing-deploy-hash").value.trim();
+  const button = $("verify-deployment");
+  if (!HEX_WORD.test(hash)) {
+    show("existing-deploy-status", "Paste the 0x-prefixed 64-hex-character contract-creation transaction hash.", true);
+    return;
+  }
+  button.disabled = true;
+  try {
+    show("existing-deploy-status", "Checking Arc mainnet for this transaction…");
+    await checkArcRpc();
+    const receipt = await rpc("eth_getTransactionReceipt", [hash]);
+    if (!receipt) throw new Error("No mined receipt for this hash on Arc mainnet. Do not redeploy until wallet history is checked.");
+    if (receipt.transactionHash?.toLowerCase() !== hash.toLowerCase()) throw new Error("Receipt hash mismatch");
+    if (receipt.status !== "0x1" || !HEX_ADDRESS.test(receipt.contractAddress || "")) {
+      throw new Error("This is not a successful Arc mainnet contract-creation transaction.");
+    }
+    const address = receipt.contractAddress;
+    const code = await rpc("eth_getCode", [address, "latest"]);
+    if (!code || code === "0x" || code.length < 80) throw new Error("Transaction mined but no contract code found at that address.");
+    const ownerResult = await rpc("eth_call", [{ to: address, data: "0x8da5cb5b" }, "latest"]);
+    if (!/^0x[0-9a-fA-F]{64}$/.test(ownerResult)) throw new Error("A contract exists, but its owner() interface could not be verified.");
+    $("proof-contract").value = address;
+    const el = $("existing-deploy-link");
+    el.replaceChildren();
+    const a = document.createElement("a");
+    a.href = "https://explorer.arc.io/tx/" + hash;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = "See contract-creation receipt in Arc Explorer";
+    el.append(a);
+    show("existing-deploy-status", "VERIFIED deployed contract on Arc mainnet: " + address + " in block " + BigInt(receipt.blockNumber).toString() + ". Save this contract address and hash for DoraHacks.");
+    try { localStorage.setItem("basepulse-arc-deployment-hash", hash); } catch {}
+  } catch (error) {
+    show("existing-deploy-status", error?.message || String(error), true);
+  } finally {
+    button.disabled = false;
+  }
+}
+try {
+  const saved = localStorage.getItem("basepulse-arc-deployment-hash");
+  if (saved && HEX_WORD.test(saved)) $("existing-deploy-hash").value = saved;
+} catch {}
+$("verify-deployment")?.addEventListener("click", verifyExistingDeployment);
 
 async function diagnoseWallet() {
   const el = $("wallet-diagnostics");
