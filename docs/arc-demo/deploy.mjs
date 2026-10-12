@@ -4,23 +4,49 @@
  * Each transaction requires explicit approval in the user's wallet.
  */
 const RPC = "https://rpc.mainnet.arc.io";
+const READ_RPCS = [RPC, "https://rpc.arc-scan.org"];
 const ARC_ID = "0x13b2"; // 5042
 const $ = (id) => document.getElementById(id);
 const HEX_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HEX_WORD = /^0x[0-9a-fA-F]{64}$/;
+const rpcApproved = new Set();
 
-async function rpc(method, params = []) {
-  const response = await fetch(RPC, {
+async function callEndpoint(endpoint, method, params = []) {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 101, method, params }),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(12000),
   });
-  if (!response.ok) throw new Error("Arc RPC HTTP " + response.status);
-  const payload = await response.json();
-  if (payload.error) throw new Error(payload.error.message || "Arc RPC rejected request");
-  if (payload.result === undefined) throw new Error("Invalid Arc RPC response");
-  return payload.result;
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  const body = await response.json();
+  if (body.error) throw new Error(body.error.message || "RPC error");
+  if (!Object.hasOwn(body, "result")) throw new Error("Malformed RPC response");
+  return body.result;
+}
+
+/**
+ * Queries only. Arcscan's secondary RPC is READ-ONLY, and must never be
+ * installed as a wallet's transaction broadcast endpoint.
+ */
+async function rpc(method, params = []) {
+  let lastError;
+  for (const endpoint of READ_RPCS) {
+    try {
+      if (!rpcApproved.has(endpoint)) {
+        const chain = await callEndpoint(endpoint, "eth_chainId");
+        if (BigInt(chain) !== 5042n) throw new Error("Endpoint is not Arc mainnet");
+        rpcApproved.add(endpoint);
+      }
+      const result = await callEndpoint(endpoint, method, params);
+      if (result === null && method === "eth_getTransactionReceipt") continue;
+      return result;
+    } catch (error) {
+      lastError = error;
+      // The next provider is only for reading and verifying chain data.
+    }
+  }
+  throw new Error("Arc read RPC endpoints unavailable: " + (lastError?.message || "Unknown error"));
 }
 
 async function checkArcRpc() {
@@ -203,6 +229,40 @@ async function recordProof() {
   }
 }
 
+
+async function diagnoseWallet() {
+  const el = $("wallet-diagnostics");
+  if (!el) return;
+  const btn = $("diagnose-wallet");
+  btn.disabled = true;
+  try {
+    show("wallet-diagnostics", "Checking Arc read RPC…");
+    await checkArcRpc();
+    const wallet = window.ethereum;
+    if (!wallet || typeof wallet.request !== "function") {
+      throw new Error("Arc read RPC works, but no injected wallet was found. Open this page in your wallet's built-in browser.");
+    }
+    const chain = await wallet.request({ method: "eth_chainId" });
+    if (BigInt(chain) !== 5042n) {
+      throw new Error("Arc read RPC works, but wallet is on chain " + BigInt(chain) + ". Switch the wallet to Arc Mainnet (5042).");
+    }
+    try {
+      const block = await wallet.request({ method: "eth_getBlockByNumber", params: ["latest", false] });
+      if (!block?.number) throw new Error("Empty block response");
+      show("wallet-diagnostics", "Arc RPC and wallet network both respond. Latest wallet block: " + BigInt(block.number).toString() + ". If you already deployed, check wallet history for a contract-creation transaction hash.");
+    } catch (error) {
+      throw new Error("Arc read RPC works, but your WALLET'S RPC failed reading a block: " +
+        (error?.message || String(error)) +
+        ". Edit Arc Mainnet network in your wallet; set the RPC URL to https://rpc.mainnet.arc.io. Do not use the read-only fallback RPC to send transactions. Reopen this page in your wallet browser.");
+    }
+  } catch (error) {
+    show("wallet-diagnostics", error?.message || String(error), true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$("diagnose-wallet")?.addEventListener("click", diagnoseWallet);
 $("deploy-proof").addEventListener("click", deployRegistry);
 $("verify-proof").addEventListener("click", verifyRegistry);
 $("anchor-proof").addEventListener("click", recordProof);
