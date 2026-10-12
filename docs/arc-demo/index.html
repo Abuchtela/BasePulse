@@ -59,6 +59,12 @@
     <h2>Deploy an Arc mainnet proof registry</h2>
     <p>Deploy a tiny, non-custodial contract that anchors audit record hashes to Arc. The contract cannot move or hold your USDC. It uses USDC for deployment and proof-recording gas. Your wallet must approve every transaction.</p>
     <p class="hint"><strong>Important:</strong> This is a mainnet transaction involving a real fee. The contract is not deployed until your wallet confirms it and an Arc receipt verifies it. On mobile, open this dashboard in a wallet's in-app browser.</p>
+    <div style="padding:12px;border:1px solid var(--line);border-radius:10px;margin:12px 0">
+      <strong>Connection check</strong>
+      <p class="hint">If your wallet shows “RPC 0x13b2 Custom eth_getBlockByNumber … too many errors,” tap here. The test distinguishes the wallet's RPC problem from the dashboard's RPC. No wallet signature or payment is requested.</p>
+      <button type="button" id="diagnose-wallet">Diagnose wallet RPC</button>
+      <p id="wallet-diagnostics" class="hint" role="status">Not checked.</p>
+    </div>
     <button type="button" id="deploy-proof">Deploy proof registry on Arc</button>
     <p id="deploy-status" class="hint" role="status">No contract deployed through this session.</p>
     <div id="deploy-tx-link" class="meta"></div>
