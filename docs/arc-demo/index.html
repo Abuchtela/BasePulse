@@ -68,6 +68,12 @@
     <button type="button" id="deploy-proof">Deploy proof registry on Arc</button>
     <p id="deploy-status" class="hint" role="status">No contract deployed through this session.</p>
     <div id="deploy-tx-link" class="meta"></div>
+    <label for="existing-deploy-hash">Already pressed Deploy? Paste the previous transaction hash first</label>
+    <input id="existing-deploy-hash" placeholder="0x + 64 hex characters" spellcheck="false" autocomplete="off" maxlength="66">
+    <button type="button" id="verify-deployment">Verify previous deployment — no gas fee</button>
+    <p class="hint">Checking an existing transaction is free and will not create another contract. If your wallet failed after approval, get the hash from its Activity / Transactions screen.</p>
+    <p id="existing-deploy-status" class="hint" role="status"></p>
+    <div id="existing-deploy-link" class="meta"></div>
     <label for="proof-contract">Deployed Arc contract address (or paste an existing one)</label>
     <input id="proof-contract" placeholder="0x…" spellcheck="false" autocomplete="off" maxlength="42">
     <button type="button" id="verify-proof">Check deployed contract</button>
