@@ -25,7 +25,7 @@
 <header>
   <div class="eyebrow">BASEPULSE &nbsp; / &nbsp; ARC INTEGRATION</div>
   <h1>USDC treasury.<br>Onchain evidence.</h1>
-  <p>A live, read-only Arc mainnet explorer for USDC balances and payment receipts. Queries go directly to Arc RPC. No simulated transactions. No wallet connection or private keys required.</p>
+  <p>A live Arc mainnet explorer for USDC balances and payment receipts, plus an optional wallet-approved onchain proof registry. Read-only queries require no wallet. Contract deployment and proof anchoring require USDC for gas and your wallet approval.</p>
   <span class="pill"><span class="dot"></span><span id="connection">Checking Arc mainnet…</span></span>
 </header>
 <div class="grid">
@@ -55,9 +55,26 @@
     <div class="result" id="receipt" role="status">Enter a transaction hash to read its onchain receipt.</div>
     <div id="tx-link" class="meta"></div>
   </section>
+  <section style="grid-column:1/-1">
+    <h2>Deploy an Arc mainnet proof registry</h2>
+    <p>Deploy a tiny, non-custodial contract that anchors audit record hashes to Arc. The contract cannot move or hold your USDC. It uses USDC for deployment and proof-recording gas. Your wallet must approve every transaction.</p>
+    <p class="hint"><strong>Important:</strong> This is a mainnet transaction involving a real fee. The contract is not deployed until your wallet confirms it and an Arc receipt verifies it. On mobile, open this dashboard in a wallet's in-app browser.</p>
+    <button type="button" id="deploy-proof">Deploy proof registry on Arc</button>
+    <p id="deploy-status" class="hint" role="status">No contract deployed through this session.</p>
+    <div id="deploy-tx-link" class="meta"></div>
+    <label for="proof-contract">Deployed Arc contract address (or paste an existing one)</label>
+    <input id="proof-contract" placeholder="0x…" spellcheck="false" autocomplete="off" maxlength="42">
+    <button type="button" id="verify-proof">Check deployed contract</button>
+    <label for="proof-hash">32-byte proof hash (for example, a verified Arc transaction hash)</label>
+    <input id="proof-hash" placeholder="0x + 64 hex characters" spellcheck="false" autocomplete="off" maxlength="66">
+    <button type="button" id="anchor-proof">Anchor proof hash on Arc</button>
+    <p class="hint">Only the deploying wallet can anchor a new hash. Do not put passwords, private documents, or secrets onchain. Hashes are public and permanent.</p>
+    <p id="proof-status" class="hint" role="status"></p>
+    <div id="proof-tx-link" class="meta"></div>
+  </section>
 </div>
 <footer>
-  <p>Arc mainnet · Chain ID 5042 · USDC predeploy 0x3600000000000000000000000000000000000000. This dashboard is read-only and makes no claims about transferred funds beyond RPC evidence.</p>
+  <p>Arc mainnet · Chain ID 5042 · USDC predeploy 0x3600000000000000000000000000000000000000. Viewing is read-only; optional contract deployment and proof anchoring require an explicit wallet transaction. No onchain claims are made without verified receipts.</p>
   <a href="https://github.com/Abuchtela/BasePulse/tree/feature/arc-usdc-treasury" target="_blank" rel="noreferrer">Source code</a> ·
   <a href="https://explorer.arc.io" target="_blank" rel="noreferrer">Arc Explorer</a>
 </footer>
@@ -178,5 +195,6 @@
   $("verify").addEventListener("click",verify);
   refresh();
 </script>
+<script type="module" src="./deploy.mjs"></script>
 </body>
 </html>
