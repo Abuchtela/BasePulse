@@ -24,13 +24,13 @@ Then call the above tRPC queries through your existing BasePulse client. Use a *
 - Arc native USDC uses 18 decimal places for gas accounting; predeploy USDC ERC-20 events use 6 decimal places. These balances represent the same asset and must not be added together.
 - The recent-transfer query specifically indexes ERC-20 Transfer logs at `0x3600000000000000000000000000000000000000`. Arc emits unified ERC-20 Transfer logs at the USDC predeploy for both native and ERC-20 sends per Circle's indexing guide. History is still limited to the requested recent-block window.
 - Transfer history is a bounded block scan rather than a full wallet history.
-- A successful onchain transaction or Arc-mainnet microgrant eligibility has **not** yet been demonstrated by this code; obtain a mainnet transaction hash as proof.
+- The Arc mainnet contract has now been independently verified against a mined creation receipt, deployed bytecode and owner (details below). Microgrant approval is not guaranteed.
 - Never include credentials in the repository.
 
 References: https://docs.arc.io/integrate/infrastructure/indexing-events and https://docs.arc.io/arc/references/evm-differences.
 
 ## Public demo
-The standalone mainnet dashboard lives in `docs/arc-demo/index.html`. Workflow `.github/workflows/arc-verify-deploy.yml` verifies unit tests, type checking, and Arc RPC access, then attempts GitHub Pages publication. GitHub Pages must be enabled and permitted in this repository for the publication stage to succeed. A hosted web dashboard reading mainnet is not itself an onchain smart-contract deployment; provide a real Arc mainnet transaction or deployed contract as grant evidence if required.
+The standalone mainnet dashboard lives in `docs/arc-demo/index.html`. Workflow `.github/workflows/arc-verify-deploy.yml` verifies unit tests, type checking, Solidity bytecode, Arc RPC access, and the actual mainnet contract's creation receipt before publishing the GitHub Pages site. The public dashboard is at https://abuchtela.github.io/BasePulse/.
 
 ## Onchain proof registry — mainnet deployment
 
@@ -43,6 +43,16 @@ The GitHub Actions workflow compiles the contract with **solc 0.8.28**, generate
 3. The dashboard waits for a successful receipt and verifies that contract code exists at the returned address. Save the **contract address and deployment transaction hash** for the grant submission.
 4. Optionally anchor a public 32-byte audit proof hash with the owner wallet, verify the transaction, and link its explorer record.
 
-**Honesty requirement:** A compiled contract and hosted deploy button are *not* an Arc mainnet deployment. Claim deployment only after a funded wallet broadcasts a transaction and an Arc mainnet receipt reports success with a contract address.
+**Mainnet deployment independently verified (October 13, 2026):** Arc RPC chain ID 5042 returned a successful contract-creation receipt in block 25,760,713; the compiled Solidity creation bytecode matched the transaction input, contract bytecode exists at the address, and owner() equals the sender. proofCount() returned 1. Re-verification runs on every feature-branch publish.
+
+- **Contract address:** `0xa8ffe853e041b0033441a4bea272a5cbb032e9c6`
+- **Creation transaction:** `0xc4a13b5e5c15b24f69f06a48e55927333992efe2b68cb948370bb0c8f455b910`
+- **Creation block:** `25760713`
+- **Deployer wallet:** `0x748f6614ea6289664bc8beb84835e2f24fe52482`
+- **Contract:** https://explorer.arc.io/address/0xa8ffe853e041b0033441a4bea272a5cbb032e9c6
+- **Creation transaction:** https://explorer.arc.io/tx/0xc4a13b5e5c15b24f69f06a48e55927333992efe2b68cb948370bb0c8f455b910
+- **Live CI verification record:** https://abuchtela.github.io/BasePulse/arc-deployment-verified.json
+
+The separately provided transaction `0xa29565ca13c91df360705106b2dcd5d1e822cb415f388cf5a0b5dc0cf290d45b` is **not** the creation transaction: its receipt is in block 25761240 with `contractAddress = null`. The verification script separately checks whether it is an onchain proof anchoring call. Never represent it as the creation transaction.
 
 Solidity is intentionally unaudited and limited to hash attestations. No automatic or unattended spending is implemented.
