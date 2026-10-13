@@ -36,7 +36,7 @@ async function verifiedProvider(url, contract) {
   if (!receipt) throw new Error("No transaction receipt at this provider");
   if (receipt.transactionHash?.toLowerCase() !== stated.transactionHash) throw new Error("Hash mismatch");
   if (receipt.status !== "0x1") throw new Error("Transaction did not succeed");
-  if (receipt.contractAddress?.toLowerCase() !== stated.contractAddress) throw new Error("Different contract address");
+  if (receipt.contractAddress?.toLowerCase() !== stated.contractAddress) throw new Error(`Receipt contract address ${receipt.contractAddress}; provided address ${stated.contractAddress}; block ${BigInt(receipt.blockNumber)}; status ${receipt.status}; sender ${receipt.from}`);
   if (Number(BigInt(receipt.blockNumber)) !== stated.blockNumber) throw new Error("Block number mismatch");
   if (receipt.to !== null) throw new Error("Not a contract creation receipt");
 
