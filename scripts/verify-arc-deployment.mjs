@@ -1,94 +1,115 @@
-// Independently verify the user-provided Arc mainnet deployment against chain RPC.
-// Read only: no wallet, private keys, transactions, or gas expenditure.
+// Resolve and independently verify an Arc mainnet contract deployment.
+// A separate user-provided transaction hash is retained for audit but is NOT assumed to be the creation transaction.
 import { readFile, writeFile } from "node:fs/promises";
 import { toFunctionSelector } from "viem";
 
-const stated = Object.freeze({
+const supplied = Object.freeze({
   chainId: 5042,
-  transactionHash: "0xa29565ca13c91df360705106b2dcd5d1e822cb415f388cf5a0b5dc0cf290d45b",
+  userSuppliedTransactionHash: "0xa29565ca13c91df360705106b2dcd5d1e822cb415f388cf5a0b5dc0cf290d45b",
   contractAddress: "0xa8ffe853e041b0033441a4bea272a5cbb032e9c6",
-  blockNumber: 25760713,
+  reportedDeploymentBlock: 25760713,
 });
-const providers = [
-  "https://rpc.mainnet.arc.io",
-  "https://arc-rpc.publicnode.com",
-  "https://rpc.arc-scan.org",
-];
-
-async function postRpc(url, method, params = []) {
+const providers = ["https://rpc.mainnet.arc.io", "https://arc-rpc.publicnode.com"];
+async function rpc(url, method, params = []) {
   const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
+    method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 181, method, params }),
     signal: AbortSignal.timeout(15000),
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status} ${url}`);
-  const result = await response.json();
-  if (result.error) throw new Error(`${url}: ${result.error.message}`);
-  if (!Object.hasOwn(result, "result")) throw new Error(`Malformed ${method} result`);
-  return result.result;
+  if (!response.ok) throw new Error(`HTTP ${response.status} on ${method}`);
+  const body = await response.json();
+  if (body.error) throw new Error(`${method}: ${body.error.message}`);
+  if (!Object.hasOwn(body, "result")) throw new Error(`Malformed response to ${method}`);
+  return body.result;
 }
 
-async function verifiedProvider(url, contract) {
-  const chain = BigInt(await postRpc(url, "eth_chainId"));
-  if (chain !== BigInt(stated.chainId)) throw new Error(`Wrong chain ID: ${chain}`);
-  const receipt = await postRpc(url, "eth_getTransactionReceipt", [stated.transactionHash]);
-  if (!receipt) throw new Error("No transaction receipt at this provider");
-  if (receipt.transactionHash?.toLowerCase() !== stated.transactionHash) throw new Error("Hash mismatch");
-  if (receipt.status !== "0x1") throw new Error("Transaction did not succeed");
-  if (receipt.contractAddress?.toLowerCase() !== stated.contractAddress) throw new Error(`Receipt contract address ${receipt.contractAddress}; provided address ${stated.contractAddress}; block ${BigInt(receipt.blockNumber)}; status ${receipt.status}; sender ${receipt.from}`);
-  if (Number(BigInt(receipt.blockNumber)) !== stated.blockNumber) throw new Error("Block number mismatch");
-  if (receipt.to !== null) throw new Error("Not a contract creation receipt");
-
-  const transaction = await postRpc(url, "eth_getTransactionByHash", [stated.transactionHash]);
-  if (!transaction || transaction.hash?.toLowerCase() !== stated.transactionHash) throw new Error("No matching transaction");
-  if (transaction.to !== null) throw new Error("Not a contract creation transaction");
-  if (transaction.from?.toLowerCase() !== receipt.from?.toLowerCase()) throw new Error("Sender mismatch");
-  if ((transaction.input || transaction.data)?.toLowerCase() !== contract.bytecode.toLowerCase()) {
-    throw new Error("Deployed creation bytecode does not match compiled BasePulse ArcTreasuryProof.sol");
+async function getBlockReceipts(url, blockNumber) {
+  const blockHex = "0x" + blockNumber.toString(16);
+  const block = await rpc(url, "eth_getBlockByNumber", [blockHex, false]);
+  if (!block || Number(BigInt(block.number)) !== blockNumber) throw new Error("Reported deployment block not returned");
+  console.log("REPORTED BLOCK", blockNumber, "transactions", block.transactions?.length);
+  try {
+    const receipts = await rpc(url, "eth_getBlockReceipts", [blockHex]);
+    if (Array.isArray(receipts)) return receipts;
+  } catch (error) {
+    console.log("Block receipts batch unavailable:", error.message, "- using transaction receipts");
   }
-
-  const deployedCode = await postRpc(url, "eth_getCode", [stated.contractAddress, "latest"]);
-  if (!/^0x[0-9a-f]+$/i.test(deployedCode || "") || deployedCode.length < 80) {
-    throw new Error("No runtime contract code found");
+  if (!Array.isArray(block.transactions) || block.transactions.length > 200) {
+    throw new Error("Cannot inspect all block transactions safely");
   }
-  const owner = await postRpc(url, "eth_call", [{
-    to: stated.contractAddress, data: toFunctionSelector("owner()"),
+  const receipts = [];
+  for (const hash of block.transactions) {
+    receipts.push(await rpc(url, "eth_getTransactionReceipt", [hash]));
+  }
+  return receipts.filter(Boolean);
+}
+
+async function verifyProvider(url, artifact) {
+  const chain = BigInt(await rpc(url, "eth_chainId"));
+  if (chain !== BigInt(supplied.chainId)) throw new Error("Wrong chain id " + chain);
+
+  const userTx = await rpc(url, "eth_getTransactionReceipt", [supplied.userSuppliedTransactionHash]);
+  if (userTx) {
+    console.log("USER PROVIDED HASH", supplied.userSuppliedTransactionHash,
+      "block", BigInt(userTx.blockNumber).toString(),
+      "contractAddress", userTx.contractAddress,
+      "status", userTx.status);
+  }
+  const code = await rpc(url, "eth_getCode", [supplied.contractAddress, "latest"]);
+  if (!/^0x[0-9a-f]+$/i.test(code || "") || code.length < 80) {
+    throw new Error("Reported contract address has no deployed code on Arc mainnet");
+  }
+  console.log("CONTRACT HAS LIVE CODE", supplied.contractAddress, "bytes", (code.length - 2) / 2);
+
+  const receipts = await getBlockReceipts(url, supplied.reportedDeploymentBlock);
+  const receipt = receipts.find((x) => x?.contractAddress?.toLowerCase() === supplied.contractAddress);
+  if (!receipt) throw new Error("No contract creation receipt matches this address in reported block");
+  if (receipt.status !== "0x1") throw new Error("Deployment receipt reverted");
+  const creationTx = await rpc(url, "eth_getTransactionByHash", [receipt.transactionHash]);
+  if (!creationTx || creationTx.to !== null) throw new Error("Creation transaction missing or has recipient");
+  if ((creationTx.input || creationTx.data)?.toLowerCase() !== artifact.bytecode.toLowerCase()) {
+    throw new Error("Onchain creation bytecode does not match compiled BasePulse ArcTreasuryProof.sol");
+  }
+  if (creationTx.from?.toLowerCase() !== receipt.from?.toLowerCase()) throw new Error("Deployer mismatch");
+  const owner = await rpc(url, "eth_call", [{
+    to: supplied.contractAddress, data: toFunctionSelector("owner()"),
   }, "latest"]);
-  if (!/^0x[0-9a-f]{64}$/i.test(owner || "") || owner.slice(-40).toLowerCase() !== transaction.from.slice(2).toLowerCase()) {
-    throw new Error("owner() did not match contract deployer");
+  if (!/^0x[0-9a-f]{64}$/i.test(owner || "") ||
+      owner.slice(-40).toLowerCase() !== creationTx.from.slice(2).toLowerCase()) {
+    throw new Error("owner() does not match contract deployer");
   }
-  const count = await postRpc(url, "eth_call", [{
-    to: stated.contractAddress, data: toFunctionSelector("proofCount()"),
+  const count = await rpc(url, "eth_call", [{
+    to: supplied.contractAddress, data: toFunctionSelector("proofCount()"),
   }, "latest"]);
   if (!/^0x[0-9a-f]+$/i.test(count || "")) throw new Error("Cannot read proofCount()");
 
   return {
-    ...stated,
+    chainId: supplied.chainId,
+    network: "Arc Mainnet",
     status: "verified",
     contractType: "ArcTreasuryProof",
     sourcePath: "contracts/ArcTreasuryProof.sol",
-    deployer: transaction.from,
+    contractAddress: supplied.contractAddress,
+    deploymentTransactionHash: receipt.transactionHash,
+    deploymentBlock: Number(BigInt(receipt.blockNumber)),
+    deployer: creationTx.from,
     proofCount: BigInt(count).toString(),
-    verifiedAgainst: url,
-    contractCreationBytecodeMatched: true,
+    userSuppliedOtherTransactionHash: supplied.userSuppliedTransactionHash,
+    compilerCreationBytecodeMatched: true,
     ownerMatchedDeployer: true,
-    explorerTransaction: "https://explorer.arc.io/tx/" + stated.transactionHash,
-    explorerContract: "https://explorer.arc.io/address/" + stated.contractAddress,
+    verifiedAgainst: url,
+    explorerTransaction: "https://explorer.arc.io/tx/" + receipt.transactionHash,
+    explorerContract: "https://explorer.arc.io/address/" + supplied.contractAddress,
   };
 }
 
-const contract = JSON.parse(await readFile("docs/arc-demo/ArcTreasuryProof.json", "utf8"));
-if (contract.chainId !== stated.chainId) throw new Error("Artifact has wrong chain ID");
-let verified;
-for (const provider of providers) {
-  try {
-    verified = await verifiedProvider(provider, contract);
-    break;
-  } catch (error) {
-    console.error(`Arc verification via ${provider}: ${error.message}`);
-  }
+const artifact = JSON.parse(await readFile("docs/arc-demo/ArcTreasuryProof.json", "utf8"));
+if (artifact.chainId !== supplied.chainId) throw new Error("Wrong compiled artifact chain");
+let proof;
+for (const url of providers) {
+  try { proof = await verifyProvider(url, artifact); break; }
+  catch (error) { console.error("VERIFY ATTEMPT", url, error.message); }
 }
-if (!verified) throw new Error("Unable to independently verify deployment: refusing to publish an unverified record");
-await writeFile("docs/arc-demo/arc-deployment-verified.json", JSON.stringify(verified, null, 2) + "\n");
-console.log("INDEPENDENTLY VERIFIED ARC MAINNET DEPLOYMENT", JSON.stringify(verified));
+if (!proof) throw new Error("Cannot publish without independent contract code + receipt verification");
+await writeFile("docs/arc-demo/arc-deployment-verified.json", JSON.stringify(proof, null, 2) + "\n");
+console.log("VERIFIED MAINNET CONTRACT", JSON.stringify(proof));
