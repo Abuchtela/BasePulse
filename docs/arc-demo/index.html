@@ -28,6 +28,18 @@
   <p>A live Arc mainnet explorer for USDC balances and payment receipts, plus an optional wallet-approved onchain proof registry. Read-only queries require no wallet. Contract deployment and proof anchoring require USDC for gas and your wallet approval.</p>
   <span class="pill"><span class="dot"></span><span id="connection">Checking Arc mainnet…</span></span>
 </header>
+<section style="margin-top:24px;border-color:var(--mint)">
+  <div class="eyebrow">DEPLOYED ON ARC MAINNET · VERIFIED AGAINST CHAIN RPC</div>
+  <h2 style="margin-top:12px">BasePulse ArcTreasuryProof</h2>
+  <p>Live mainnet contract verified in block <strong>25,760,713</strong>. GitHub Actions independently checks the creation transaction, matches deployed initialization bytecode to the Solidity source, checks the owner and reads the recorded-proof count. Proof count at verification: <strong>1</strong>.</p>
+  <div class="hint">Verified contract address</div>
+  <div class="result">0xa8ffe853e041b0033441a4bea272a5cbb032e9c6</div>
+  <p><a href="https://explorer.arc.io/address/0xa8ffe853e041b0033441a4bea272a5cbb032e9c6" target="_blank" rel="noopener noreferrer">View deployed contract on Arc Explorer ↗</a></p>
+  <div class="hint">Correct contract-creation transaction hash</div>
+  <div class="result">0xc4a13b5e5c15b24f69f06a48e55927333992efe2b68cb948370bb0c8f455b910</div>
+  <p><a href="https://explorer.arc.io/tx/0xc4a13b5e5c15b24f69f06a48e55927333992efe2b68cb948370bb0c8f455b910" target="_blank" rel="noopener noreferrer">View successful deployment transaction ↗</a></p>
+  <p class="hint">The deployment proof is automatically re-verified from Arc mainnet by the publishing workflow. <a href="./arc-deployment-verified.json">Machine-readable verification evidence</a> · <a href="https://github.com/Abuchtela/BasePulse/blob/feature/arc-usdc-treasury/contracts/ArcTreasuryProof.sol" target="_blank" rel="noopener noreferrer">Solidity source</a></p>
+</section>
 <div class="grid">
   <section>
     <h2>Network identity</h2>
