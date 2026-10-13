@@ -113,6 +113,8 @@ async function verifyProvider(url, artifact) {
     }
   }
 
+  if (!proofEventVerified) throw new Error("Expected user-provided onchain proof transaction was not independently verified");
+
   return {
     chainId: supplied.chainId,
     network: "Arc Mainnet",
