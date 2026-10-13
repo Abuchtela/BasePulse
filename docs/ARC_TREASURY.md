@@ -53,6 +53,8 @@ The GitHub Actions workflow compiles the contract with **solc 0.8.28**, generate
 - **Creation transaction:** https://explorer.arc.io/tx/0xc4a13b5e5c15b24f69f06a48e55927333992efe2b68cb948370bb0c8f455b910
 - **Live CI verification record:** https://abuchtela.github.io/BasePulse/arc-deployment-verified.json
 
-The separately provided transaction `0xa29565ca13c91df360705106b2dcd5d1e822cb415f388cf5a0b5dc0cf290d45b` is **not** the creation transaction: its receipt is in block 25761240 with `contractAddress = null`. The verification script separately checks whether it is an onchain proof anchoring call. Never represent it as the creation transaction.
+**Independently verified working proof transaction:** `0xa29565ca13c91df360705106b2dcd5d1e822cb415f388cf5a0b5dc0cf290d45b` (block `25761240`) successfully invoked the registry's `recordProof(bytes32)` with the creation transaction hash (`0xc4a13b...b910`) as the digest. The expected `TreasuryProofRecorded` event was emitted and the live `recorded(bytes32)` getter returned `true`. This is the first anchored proof (`proofCount() = 1`), and **it is not the creation transaction**.
+
+- **Recorded proof transaction:** https://explorer.arc.io/tx/0xa29565ca13c91df360705106b2dcd5d1e822cb415f388cf5a0b5dc0cf290d45b
 
 Solidity is intentionally unaudited and limited to hash attestations. No automatic or unattended spending is implemented.
