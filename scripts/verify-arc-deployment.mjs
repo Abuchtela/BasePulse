@@ -1,7 +1,7 @@
 // Resolve and independently verify an Arc mainnet contract deployment.
 // A separate user-provided transaction hash is retained for audit but is NOT assumed to be the creation transaction.
 import { readFile, writeFile } from "node:fs/promises";
-import { toFunctionSelector } from "viem";
+import { toFunctionSelector, toEventSelector } from "viem";
 
 const supplied = Object.freeze({
   chainId: 5042,
@@ -82,6 +82,36 @@ async function verifyProvider(url, artifact) {
     to: supplied.contractAddress, data: toFunctionSelector("proofCount()"),
   }, "latest"]);
   if (!/^0x[0-9a-f]+$/i.test(count || "")) throw new Error("Cannot read proofCount()");
+  let proofTransactionHash = null;
+  let anchoredDigest = null;
+  let proofEventVerified = false;
+  if (userTx?.status === "0x1") {
+    const proofTx = await rpc(url, "eth_getTransactionByHash", [supplied.userSuppliedTransactionHash]);
+    const selector = toFunctionSelector("recordProof(bytes32)");
+    const eventSelector = toEventSelector("TreasuryProofRecorded(bytes32,address,uint256)");
+    const rawInput = proofTx?.input || proofTx?.data || "";
+    const isProofCall = proofTx?.to?.toLowerCase() === supplied.contractAddress &&
+      proofTx?.from?.toLowerCase() === creationTx.from?.toLowerCase() &&
+      rawInput.toLowerCase().startsWith(selector.toLowerCase()) &&
+      /^0x[0-9a-f]{64}$/i.test("0x" + rawInput.slice(10));
+    if (isProofCall) {
+      const digest = "0x" + rawInput.slice(10).toLowerCase();
+      const proofEvent = (userTx.logs || []).find((log) =>
+        log.address?.toLowerCase() === supplied.contractAddress &&
+        log.topics?.[0]?.toLowerCase() === eventSelector.toLowerCase() &&
+        log.topics?.[1]?.toLowerCase() === digest);
+      if (!proofEvent) throw new Error("recordProof transaction missing expected TreasuryProofRecorded log");
+      const isRecorded = await rpc(url, "eth_call", [{
+        to: supplied.contractAddress,
+        data: toFunctionSelector("recorded(bytes32)") + digest.slice(2),
+      }, "latest"]);
+      if (BigInt(isRecorded) !== 1n) throw new Error("recorded(bytes32) is false for the claimed proof hash");
+      proofTransactionHash = supplied.userSuppliedTransactionHash;
+      anchoredDigest = digest;
+      proofEventVerified = true;
+      console.log("VERIFIED RECORDED PROOF", proofTransactionHash, "digest", digest);
+    }
+  }
 
   return {
     chainId: supplied.chainId,
@@ -94,7 +124,10 @@ async function verifyProvider(url, artifact) {
     deploymentBlock: Number(BigInt(receipt.blockNumber)),
     deployer: creationTx.from,
     proofCount: BigInt(count).toString(),
-    userSuppliedOtherTransactionHash: supplied.userSuppliedTransactionHash,
+    proofTransactionHash,
+    anchoredDigest,
+    proofEventVerified,
+    userSuppliedOtherTransactionHash: proofTransactionHash ? null : supplied.userSuppliedTransactionHash,
     compilerCreationBytecodeMatched: true,
     ownerMatchedDeployer: true,
     verifiedAgainst: url,
