@@ -12,12 +12,12 @@ npm ci --prefix claimbot-arkiv
 npm install --prefix claimbot-x402
 npm run check --prefix claimbot-x402
 npm test --prefix claimbot-x402
-X402_PAY_TO=0xYOUR_RECEIVING_ADDRESS ARKIV_TRUSTED_PUBLISHER=0xYOUR_ARKIV_PUBLISHER npm run start --prefix claimbot-x402
+ARKIV_TRUSTED_PUBLISHER=0xYOUR_ARKIV_PUBLISHER npm run start --prefix claimbot-x402
 ```
 
-`X402_PAY_TO`: a verified EVM address controlled by you to receive USDC.
+`X402_PAY_TO`: optional explicit payout override. ClaimBot's configured receiving address defaults to `0x748f6614Ea6289664bC8BeB84835E2F24fE52482` (public address supplied by the project owner). Verify it is correct before accepting real payments. The address is also recorded in `.env.example`.
 `ARKIV_TRUSTED_PUBLISHER`: the EVM account that actually publishes ClaimBot's verified records on Arkiv. The seller refuses to start without both addresses.
-These are **public addresses**, not private keys. No wallet is chosen automatically.
+These are **public addresses**, not private keys. The receiving wallet is preselected; the trusted Arkiv publisher must still be explicitly supplied.
 
 Defaults: Base Sepolia test USDC; $0.10/request; public testnet facilitator.
 Optional: `ARKIV_RPC_URL`, `X402_FACILITATOR_URL`, `X402_PRICE`, `PORT`.
