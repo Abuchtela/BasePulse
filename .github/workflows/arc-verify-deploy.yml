@@ -1,0 +1,88 @@
+name: Arc treasury verify and publish
+on:
+  push:
+    branches:
+      - feature/arc-usdc-treasury
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies from lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Arc unit tests
+        run: pnpm exec vitest run server/arc/arcTreasury.test.ts
+      - name: Typecheck
+        run: pnpm check
+      - name: Validate demo JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          content = Path("docs/arc-demo/index.html").read_text()
+          scripts = re.findall(r'<script type="module">(.*?)</script>', content, flags=re.DOTALL | re.IGNORECASE)
+          assert len(scripts) == 1, "Expected one inline demo script"
+          Path("/tmp/arc-demo.mjs").write_text(scripts[0])
+          PY
+          node --check /tmp/arc-demo.mjs
+          node --check docs/arc-demo/deploy.mjs
+      - name: Existing BasePulse production build (informational; static Arc demo is independent)
+        continue-on-error: true
+        run: pnpm build
+      - name: Compile Arc proof registry with pinned Solidity compiler
+        run: |
+          mkdir -p /tmp/basepulse-arc-solc
+          npx --yes --package=solc@0.8.28 solcjs --bin --abi --optimize --output-dir /tmp/basepulse-arc-solc contracts/ArcTreasuryProof.sol
+          node scripts/build-arc-contract.mjs
+          node --input-type=module -e 'import fs from "node:fs"; const a=JSON.parse(fs.readFileSync("docs/arc-demo/ArcTreasuryProof.json","utf8"));if(a.bytecode.length<200||a.chainId!==5042)process.exit(1);console.log("Compiled artifact verified");'
+      - name: Independently verify deployed Arc mainnet contract and bytecode
+        run: node scripts/verify-arc-deployment.mjs
+      - name: Verify live Arc mainnet and testnet RPC
+        run: node scripts/check-arc-rpc.mjs
+      - name: Package tested Arc demo and contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: arc-demo-site
+          path: docs/arc-demo
+          if-no-files-found: error
+
+  publish-arc-demo:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: arc-usdc-demo
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download tested Arc demo
+        uses: actions/download-artifact@v4
+        with:
+          name: arc-demo-site
+          path: arc-site
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload static Arc demo
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: arc-site
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
