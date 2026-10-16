@@ -1,9 +1,9 @@
 import { createPublicClient, createWalletClient } from "@arkiv-network/sdk";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { eq } from "@arkiv-network/sdk/query";
-import { http, type Hex } from "viem";
+import { http, type Hex, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { ENTITY_TYPE, PROJECT, isEligibleAndOpen, opportunityEntityParameters, type Opportunity } from "./model.js";
+import { ENTITY_TYPE, PROJECT, isEligibleAndOpen, opportunityEntityParameters, validateOpportunity, type Opportunity } from "./model.js";
 
 export const DEFAULT_RPC = "https://rpc.tiramisu.db-chain.testnet.arkiv.network";
 
@@ -26,17 +26,20 @@ export async function queryOpenOpportunities(
   target: "BasePulse" | "ClaimBot",
   rpcUrl = DEFAULT_RPC,
   now = new Date(),
+  trustedPublisher?: Address,
 ) {
   const client = publicArkivClient(rpcUrl);
-  const page = await client
+  const query = client
     .select({ key: true, owner: true, payload: true, attributes: true, expiresAt: true })
-    .where(eq("project", PROJECT), eq("entity_type", ENTITY_TYPE), eq("status", "open"))
-    .limit(50)
-    .fetch();
+    .where(eq("project", PROJECT), eq("entity_type", ENTITY_TYPE), eq("status", "open"));
+  // Source authenticity: filter creator at Arkiv before applying the page limit.
+  const page = trustedPublisher
+    ? await query.createdBy(trustedPublisher).limit(50).fetch()
+    : await query.limit(50).fetch();
 
   return page.entities.flatMap((entity) => {
     try {
-      const opportunity = entity.toJson() as Opportunity;
+      const opportunity = validateOpportunity(entity.toJson() as Opportunity, now);
       return isEligibleAndOpen(opportunity, target, now)
         ? [{ key: entity.key, owner: entity.owner, expiresAt: entity.expiresAt, opportunity }]
         : [];
