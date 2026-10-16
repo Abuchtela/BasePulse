@@ -1,0 +1,27 @@
+{
+  "name": "claimbot-arkiv",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Verifiable grant and bounty discovery records on Arkiv Tiramisu.",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "check:rpc": "node --import tsx src/check-rpc.ts",
+    "query": "node --import tsx src/query.ts",
+    "publish": "node --import tsx src/publish.ts"
+  },
+  "dependencies": {
+    "@arkiv-network/sdk": "0.8.1",
+    "viem": "^2.38.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.10.0"
+  }
+}
