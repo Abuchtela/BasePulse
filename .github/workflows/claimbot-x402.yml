@@ -1,0 +1,33 @@
+name: ClaimBot x402 checks
+on:
+  push:
+    paths:
+      - 'claimbot-arkiv/**'
+      - 'claimbot-x402/**'
+      - '.github/workflows/claimbot-x402.yml'
+  pull_request:
+    paths:
+      - 'claimbot-arkiv/**'
+      - 'claimbot-x402/**'
+      - '.github/workflows/claimbot-x402.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify payment preflight safety (zero external dependencies)
+        run: node --experimental-strip-types --test claimbot-x402/test/*.test.ts
+      - name: Install Arkiv package
+        run: npm ci --prefix claimbot-arkiv --no-audit --no-fund
+      - name: Check Arkiv types and tests
+        run: |
+          npm run typecheck --prefix claimbot-arkiv
+          npm test --prefix claimbot-arkiv
+      - name: Install x402 seller package
+        run: npm install --prefix claimbot-x402 --no-audit --no-fund
+      - name: Check x402 seller types
+        run: npm run check --prefix claimbot-x402
