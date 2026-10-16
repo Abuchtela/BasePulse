@@ -5,11 +5,9 @@ import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { queryOpenOpportunities } from "../../claimbot-arkiv/src/client.js";
 import { loadPaidOpportunities, RequestPreflightError } from "./preflight.js";
 import type { Address } from "viem";
+import { resolvePayoutAddress } from "./payout.js";
 
-const payTo = process.env.X402_PAY_TO;
-if (!payTo || !/^0x[a-fA-F0-9]{40}$/.test(payTo) || /^0x0{40}$/i.test(payTo)) {
-  throw new Error("X402_PAY_TO must be a real, valid EVM receiving address");
-}
+const payTo = resolvePayoutAddress(process.env.X402_PAY_TO);
 const publisher = process.env.ARKIV_TRUSTED_PUBLISHER;
 if (!publisher || !/^0x[a-fA-F0-9]{40}$/.test(publisher) || /^0x0{40}$/i.test(publisher)) {
   throw new Error("ARKIV_TRUSTED_PUBLISHER must be a trusted nonzero Arkiv writer address");
