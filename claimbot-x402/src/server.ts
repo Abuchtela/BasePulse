@@ -4,14 +4,11 @@ import { HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { queryOpenOpportunities } from "../../claimbot-arkiv/src/client.js";
 import { loadPaidOpportunities, RequestPreflightError } from "./preflight.js";
-import type { Address } from "viem";
 import { resolvePayoutAddress } from "./payout.js";
+import { resolveArkivPublisherAddress } from "./publisher.js";
 
 const payTo = resolvePayoutAddress(process.env.X402_PAY_TO);
-const publisher = process.env.ARKIV_TRUSTED_PUBLISHER;
-if (!publisher || !/^0x[a-fA-F0-9]{40}$/.test(publisher) || /^0x0{40}$/i.test(publisher)) {
-  throw new Error("ARKIV_TRUSTED_PUBLISHER must be a trusted nonzero Arkiv writer address");
-}
+const publisher = resolveArkivPublisherAddress(process.env.ARKIV_TRUSTED_PUBLISHER);
 const isMainnet = process.env.X402_NETWORK === "base";
 if (isMainnet && process.env.ALLOW_MAINNET_X402_SELLER !== "true") {
   throw new Error("Mainnet seller locked until explicitly enabled");
@@ -40,7 +37,7 @@ app.get("/api/opportunities", async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   try {
     res.locals.report = await loadPaidOpportunities(req.query.project, target =>
-      queryOpenOpportunities(target, process.env.ARKIV_RPC_URL, new Date(), publisher as Address),
+      queryOpenOpportunities(target, process.env.ARKIV_RPC_URL, new Date(), publisher),
     );
     next();
   } catch (error) {
