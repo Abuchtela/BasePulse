@@ -1,0 +1,35 @@
+name: ClaimBot publisher public smoke
+
+on:
+  push:
+    branches: [feature/claimbot-arkiv-wallet-publisher]
+    paths: ['.github/workflows/claimbot-publisher-smoke.yml']
+  workflow_dispatch:
+
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify wallet page is public
+        env:
+          SITE: https://claimbot-x402-h6uznifsp-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          status="$(curl --max-time 30 -sSL -o /tmp/publish.html -w '%{http_code}' "$SITE/publish.html")"
+          echo "publisher HTML status=$status"
+          head -c 250 /tmp/publish.html
+          test "$status" = "200"
+          grep -q 'Connect publisher wallet' /tmp/publish.html
+          grep -q 'Sign &amp; publish on Arkiv testnet' /tmp/publish.html
+      - name: Verify bundled browser SDK is accessible
+        env:
+          SITE: https://claimbot-x402-h6uznifsp-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          status="$(curl --max-time 30 -sSL -o /tmp/publisher.js -w '%{http_code}' "$SITE/publisher.js")"
+          echo "publisher JS status=$status"
+          echo "JS bytes=$(wc -c < /tmp/publisher.js)"
+          test "$status" = "200"
+          test "$(wc -c < /tmp/publisher.js)" -gt 4000
+          grep -q 'eth_requestAccounts' /tmp/publisher.js
