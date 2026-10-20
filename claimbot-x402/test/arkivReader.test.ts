@@ -15,3 +15,6 @@ test("rejects untrusted protocols",()=>assert.equal(isPayableOpportunity({...val
 test("rejects wrong target project",()=>assert.equal(isPayableOpportunity(valid,"BasePulse",now),false));
 test("rejects empty eligibility",()=>assert.equal(isPayableOpportunity({...valid, eligibility:[]},"ClaimBot",now),false));
 test("rejects future verifiedAt",()=>assert.equal(isPayableOpportunity({...valid, verifiedAt:"2026-10-21T00:00:00Z"},"ClaimBot",now),false));
+test("rejects stale official-source verification timestamps",()=>assert.equal(isPayableOpportunity({...valid,verifiedAt:"2026-10-01T00:00:00Z"},"ClaimBot",now),false));
+test("accepts verification exactly at the seven-day limit",()=>assert.equal(isPayableOpportunity({...valid,verifiedAt:"2026-10-12T00:00:00Z"},"ClaimBot",now),true));
+test("rejects verification one millisecond older than seven days",()=>assert.equal(isPayableOpportunity({...valid,verifiedAt:"2026-10-11T23:59:59.999Z"},"ClaimBot",now),false));
