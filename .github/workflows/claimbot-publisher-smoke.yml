@@ -53,3 +53,5 @@ jobs:
           test "$status" = "200"
           test "$(wc -c < /tmp/publisher.js)" -gt 4000
           grep -q 'eth_requestAccounts' /tmp/publisher.js
+          grep -q 'opportunity_id' /tmp/publisher.js
+          grep -q 'No browser wallet detected' /tmp/publisher.js
