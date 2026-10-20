@@ -32,6 +32,10 @@ const resourceServer = new x402ResourceServer(facilitator)
   .register(network, new ExactEvmScheme());
 const app = express();
 app.disable("x-powered-by");
+app.get("/config", (_req,res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({publisher, payTo, network, signingNetwork:"Arkiv Tiramisu"});
+});
 app.get("/publisher.js", (_req, res) => {
   if (!PUBLISHER_JS) {res.status(503).send("Publisher bundle has not been built"); return;}
   res.setHeader("Cache-Control", "public, max-age=60");
