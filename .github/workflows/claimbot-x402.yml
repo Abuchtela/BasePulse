@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify payment preflight safety (zero external dependencies)
-        run: node --experimental-strip-types --test claimbot-x402/test/*.test.ts
+        run: node --experimental-strip-types --test claimbot-x402/test/preflight.test.ts claimbot-x402/test/payout.test.ts claimbot-x402/test/publisher.test.ts
       - name: Install Arkiv package
         run: npm ci --prefix claimbot-arkiv --no-audit --no-fund
       - name: Check Arkiv types and tests
@@ -31,3 +31,7 @@ jobs:
         run: npm install --prefix claimbot-x402 --no-audit --no-fund
       - name: Check x402 seller types
         run: npm run check --prefix claimbot-x402
+      - name: Run all x402 tests
+        run: npm test --prefix claimbot-x402
+      - name: Probe trusted publisher on live Arkiv Tiramisu
+        run: npm run probe:arkiv --prefix claimbot-x402
