@@ -42,3 +42,5 @@ This seller is also a Vercel Node API with `api/index.ts`; `src/app.ts` exports 
 The live source probe is `npm run probe:arkiv --prefix claimbot-x402` (from repository root). It only reads trusted-writer records from Arkiv Tiramisu; it never manufactures opportunities or signs transactions. Empty results will prevent paid calls. ClaimBot's older hardcoded Arkiv grant was due on October 18, 2026 and cannot be used for a current sale. A current, verified record must be published and signed by the designated Arkiv writer to unlock the x402 paid endpoint.
 
 **No real-money transactions are activated by this project.** Base Sepolia and its test USDC are the defaults. Never paste wallet private keys or recovery phrases into a chat or source repository.
+
+Records older than **7 days** since `verifiedAt` are rejected before a payment challenge; re-check official opportunities and publish a new signed current record to keep reports active. The live probe respects `ARKIV_TRUSTED_PUBLISHER` if explicitly overridden.
