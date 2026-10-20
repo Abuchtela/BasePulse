@@ -1,16 +1,23 @@
-import { createWalletClient } from "@arkiv-network/sdk";
+import { createWalletClient, createPublicClient } from "@arkiv-network/sdk";
 import { tiramisu } from "@arkiv-network/sdk/chains";
 import { jsonToPayload, ExpirationTime } from "@arkiv-network/sdk/utils";
 import { str, i32, u64 } from "@arkiv-network/sdk/attr";
-import { custom } from "viem";
-import { DEFAULT_CLAIMBOT_ARKIV_PUBLISHER } from "../src/publisher.js";
+import { custom, http } from "viem";
+import { eq } from "@arkiv-network/sdk/query";
 
 interface InjectedWallet {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
 }
 declare global { interface Window { ethereum?: InjectedWallet } }
 const rpc = "https://rpc.tiramisu.db-chain.testnet.arkiv.network";
-const authorized = DEFAULT_CLAIMBOT_ARKIV_PUBLISHER.toLowerCase();
+let authorized = "";
+const publisherConfig = fetch("/config",{cache:"no-store"}).then(async response => {
+  if (!response.ok) throw new Error("Could not retrieve the authorized publisher from ClaimBot.");
+  const config = await response.json() as { publisher: string };
+  if (!/^0x[a-fA-F0-9]{40}$/.test(config.publisher)) throw new Error("Invalid publisher address configured on the server.");
+  authorized = config.publisher.toLowerCase();
+  return config.publisher;
+});
 const statusNode = document.querySelector("#status") as HTMLElement;
 const connectButton = document.querySelector("#connect") as HTMLButtonElement;
 const submitButton = document.querySelector("#publish") as HTMLButtonElement;
@@ -18,6 +25,10 @@ const walletNode = document.querySelector("#wallet") as HTMLElement;
 const form = document.querySelector("#opportunity") as HTMLFormElement;
 
 let account: `0x${string}` | null = null;
+publisherConfig.then(publisher => { walletNode.textContent = "Required publisher: " + publisher; }).catch(error => {
+  connectButton.disabled = true;
+  status(error instanceof Error ? error.message : String(error), true);
+});
 function status(message: string, error = false) {
   statusNode.textContent = message;
   statusNode.classList.toggle("error", error);
@@ -51,6 +62,7 @@ async function ensureArkiv(wallet: InjectedWallet) {
 }
 connectButton.addEventListener("click", async () => {
   try {
+    await publisherConfig;
     const wallet = connectedWallet();
     const accounts = await wallet.request({ method: "eth_requestAccounts" }) as string[];
     const first = accounts[0];
@@ -66,13 +78,14 @@ connectButton.addEventListener("click", async () => {
     status(error instanceof Error ? error.message : String(error), true);
   }
 });
-window.ethereum?.request({method:"eth_accounts"}).then(value=>{
-  const first=(value as string[])?.[0]; if(first?.toLowerCase()===authorized) walletNode.textContent="Authorized publisher detected. Click Connect Wallet to verify the network.";
+publisherConfig.then(() => window.ethereum?.request({method:"eth_accounts"})).then(value=>{
+  const first=(value as string[]|undefined)?.[0]; if(first?.toLowerCase()===authorized) walletNode.textContent="Authorized publisher detected. Click Connect Wallet to verify the network.";
 }).catch(()=>{});
 form.addEventListener("submit", async event => {
   event.preventDefault();
   submitButton.disabled = true;
   try {
+    await publisherConfig;
     const wallet = connectedWallet();
     const accounts = await wallet.request({ method: "eth_accounts" }) as string[];
     const selected = accounts[0];
@@ -97,8 +110,17 @@ form.addEventListener("submit", async event => {
       payout:field("payout"), fit:field("fit"), smallestNextStep:field("smallestNextStep"),
       targetProject:target, region:"global" as const, status:"open" as const, verifiedAt:now.toISOString(),
     };
+    if (!/^[a-zA-Z0-9_-]{4,80}$/.test(record.id)) throw new Error("Opportunity ID must be 4–80 letters, numbers, underscores or hyphens.");
     if (!record.id || !record.title || !record.payout || !record.fit || !record.smallestNextStep) {
       throw new Error("Complete every required opportunity field.");
+    }
+    // Preserve the server-side writer+ID duplicate check before creating an immutable record.
+    const read = createPublicClient({chain:tiramisu,transport:http(rpc,{retryCount:1,timeout:10000})});
+    const existing = await read.select({key:true})
+      .where(eq("project","claimbot"),eq("entity_type","funding_opportunity"),eq("opportunity_id",record.id))
+      .createdBy(account).limit(1).fetch();
+    if (existing.entities.length || existing.hasNextPage()) {
+      throw new Error("This publisher already created that opportunity ID. Do not submit duplicate records; choose a new versioned ID only after re-verifying the official source.");
     }
     // Wallet signs inside its own interface: no private key is ever sent or stored here.
     const client = createWalletClient({
