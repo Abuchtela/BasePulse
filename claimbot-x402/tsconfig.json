@@ -14,7 +14,7 @@
   },
   "include": [
     "src/**/*.ts",
-    "test/**/*.ts",
-    "../claimbot-arkiv/src/**/*.ts"
+    "api/**/*.ts",
+    "test/**/*.ts"
   ]
 }
