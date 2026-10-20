@@ -1,0 +1,53 @@
+name: ClaimBot x402 public smoke
+
+on:
+  push:
+    branches:
+      - feature/claimbot-x402-deployable-api
+    paths:
+      - '.github/workflows/claimbot-x402-public-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify deployed health endpoint is publicly accessible
+        env:
+          URL: https://claimbot-x402-npenuof7r-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          status="$(curl -sSL --max-time 30 -o /tmp/claimbot-health.json -w '%{http_code}' "$URL/health")"
+          echo "health HTTP $status"
+          cat /tmp/claimbot-health.json
+          test "$status" = 200
+          grep -q '"status":"ok"' /tmp/claimbot-health.json
+      - name: Verify invalid project fails before payment
+        env:
+          URL: https://claimbot-x402-npenuof7r-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          status="$(curl -sSL --max-time 30 -o /tmp/claimbot-invalid.json -w '%{http_code}' "$URL/api/opportunities?project=Invalid")"
+          echo "invalid project HTTP $status"
+          cat /tmp/claimbot-invalid.json
+          test "$status" = 400
+      - name: Check legitimate source state without making a payment
+        env:
+          URL: https://claimbot-x402-npenuof7r-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          status="$(curl -sSL --max-time 40 -o /tmp/claimbot-real.json -w '%{http_code}' "$URL/api/opportunities?project=ClaimBot")"
+          echo "real opportunities HTTP $status"
+          cat /tmp/claimbot-real.json
+          if [ "$status" = 404 ]; then
+            grep -q "No eligible verified opportunities" /tmp/claimbot-real.json
+            echo "Confirmed no paid request was offered for zero records."
+          elif [ "$status" = 402 ]; then
+            echo "Payment challenge verified, pending an actual testnet settlement."
+          else
+            echo "Unexpected response: $status"
+            exit 1
+          fi
