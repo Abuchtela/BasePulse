@@ -31,6 +31,8 @@ jobs:
         run: npm install --prefix claimbot-x402 --no-audit --no-fund
       - name: Check x402 seller types
         run: npm run check --prefix claimbot-x402
+      - name: Bundle wallet publisher for the browser
+        run: npm run build:publisher --prefix claimbot-x402
       - name: Run all x402 tests
         run: npm test --prefix claimbot-x402
       - name: Probe trusted publisher on live Arkiv Tiramisu
