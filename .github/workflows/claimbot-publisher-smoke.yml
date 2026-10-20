@@ -1,0 +1,57 @@
+name: ClaimBot publisher public smoke
+
+on:
+  push:
+    branches: [feature/claimbot-arkiv-wallet-publisher, main]
+    paths: ['claimbot-x402/**', '.github/workflows/claimbot-publisher-smoke.yml']
+  workflow_dispatch:
+
+permissions: {contents: read}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify wallet page is public
+        env:
+          SITE: https://claimbot-x402-git-feature-claimbot-a-1fefc3-abuchtelas-projects.vercel.app
+          PROD_SITE: https://claimbot-x402-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_NAME" = "main" ]; then SITE="$PROD_SITE"; fi
+          status="$(curl --max-time 30 -sSL -o /tmp/publish.html -w '%{http_code}' "$SITE/publish.html")"
+          echo "publisher HTML status=$status"
+          head -c 250 /tmp/publish.html
+          test "$status" = "200"
+          grep -q 'Connect publisher wallet' /tmp/publish.html
+          grep -q 'Sign &amp; publish on Arkiv testnet' /tmp/publish.html
+      - name: Verify public publisher configuration
+        env:
+          SITE: https://claimbot-x402-git-feature-claimbot-a-1fefc3-abuchtelas-projects.vercel.app
+          PROD_SITE: https://claimbot-x402-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_NAME" = "main" ]; then SITE="$PROD_SITE"; fi
+          status="$(curl -sSL --max-time 30 -o /tmp/config.json -w '%{http_code}' "$SITE/config")"
+          echo "config HTTP $status"
+          test "$status" = "200"
+          grep -qi "0x4aBAf297bd37bb3FA0036b45976A92a46d903688" /tmp/config.json
+      - name: Verify bundled browser SDK is accessible
+        env:
+          SITE: https://claimbot-x402-git-feature-claimbot-a-1fefc3-abuchtelas-projects.vercel.app
+          PROD_SITE: https://claimbot-x402-abuchtelas-projects.vercel.app
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_NAME" = "main" ]; then SITE="$PROD_SITE"; fi
+          status="000"
+          for attempt in $(seq 1 20); do
+            status="$(curl --max-time 30 -sSL -o /tmp/publisher.js -w '%{http_code}' "$SITE/publisher.js" || true)"
+            if [ "$status" = "200" ]; then break; fi
+            sleep 5
+          done
+          echo "publisher JS status=$status"
+          echo "JS bytes=$(wc -c < /tmp/publisher.js)"
+          test "$status" = "200"
+          test "$(wc -c < /tmp/publisher.js)" -gt 4000
+          grep -q 'eth_requestAccounts' /tmp/publisher.js
+          grep -q 'opportunity_id' /tmp/publisher.js
+          grep -q 'No browser wallet detected' /tmp/publisher.js

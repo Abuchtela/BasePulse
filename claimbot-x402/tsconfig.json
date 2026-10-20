@@ -10,11 +10,16 @@
     "allowImportingTsExtensions": true,
     "types": [
       "node"
+    ],
+    "lib": [
+      "ES2022",
+      "DOM"
     ]
   },
   "include": [
     "src/**/*.ts",
     "api/**/*.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "web/**/*.ts"
   ]
 }

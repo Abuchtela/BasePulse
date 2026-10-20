@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isPayableOpportunity } from "../src/arkivReader.ts";
+import { isPayableOpportunity, distinctByOpportunityId } from "../src/arkivReader.ts";
 
 const now = new Date("2026-10-19T00:00:00Z");
 const valid = {
@@ -18,3 +18,9 @@ test("rejects future verifiedAt",()=>assert.equal(isPayableOpportunity({...valid
 test("rejects stale official-source verification timestamps",()=>assert.equal(isPayableOpportunity({...valid,verifiedAt:"2026-10-01T00:00:00Z"},"ClaimBot",now),false));
 test("accepts verification exactly at the seven-day limit",()=>assert.equal(isPayableOpportunity({...valid,verifiedAt:"2026-10-12T00:00:00Z"},"ClaimBot",now),true));
 test("rejects verification one millisecond older than seven days",()=>assert.equal(isPayableOpportunity({...valid,verifiedAt:"2026-10-11T23:59:59.999Z"},"ClaimBot",now),false));
+test("paid results are deduplicated by opportunity ID",()=>{
+ const first={opportunity:{id:"same"},key:"first"};
+ const repeated={opportunity:{id:"same"},key:"second"};
+ const other={opportunity:{id:"new"},key:"third"};
+ assert.deepEqual(distinctByOpportunityId([first,repeated,other]),[first,other]);
+});

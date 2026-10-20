@@ -31,6 +31,8 @@ jobs:
         run: npm install --prefix claimbot-x402 --no-audit --no-fund
       - name: Check x402 seller types
         run: npm run check --prefix claimbot-x402
+      - name: Verify precompiled publisher wallet code
+        run: node --experimental-strip-types --input-type=module -e 'import("./claimbot-x402/src/publisherBundle.ts").then(m => { if(m.PUBLISHER_JS.length < 10000 || !m.PUBLISHER_JS.includes("eth_requestAccounts")) process.exit(1) })'
       - name: Run all x402 tests
         run: npm test --prefix claimbot-x402
       - name: Probe trusted publisher on live Arkiv Tiramisu
