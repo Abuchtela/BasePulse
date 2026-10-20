@@ -10,7 +10,8 @@
     "start": "tsx src/server.ts",
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "node --experimental-strip-types --test test/*.test.ts",
-    "probe:arkiv": "tsx src/probe.ts"
+    "probe:arkiv": "tsx src/probe.ts",
+    "build:publisher": "esbuild web/publisher.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=public/publisher.js --minify"
   },
   "dependencies": {
     "@x402/core": "^2.28.0",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/node": "^24.7.2"
+    "@types/node": "^24.7.2",
+    "esbuild": "^0.28.0"
   }
 }
