@@ -6,6 +6,7 @@ import { queryTrustedOpenOpportunities } from "./arkivReader.js";
 import { loadPaidOpportunities, RequestPreflightError } from "./preflight.js";
 import { resolvePayoutAddress } from "./payout.js";
 import { resolveArkivPublisherAddress } from "./publisher.js";
+import { PUBLISHER_JS } from "./publisherBundle.js";
 
 const payTo = resolvePayoutAddress(process.env.X402_PAY_TO);
 const publisher = resolveArkivPublisherAddress(process.env.ARKIV_TRUSTED_PUBLISHER);
@@ -31,6 +32,11 @@ const resourceServer = new x402ResourceServer(facilitator)
   .register(network, new ExactEvmScheme());
 const app = express();
 app.disable("x-powered-by");
+app.get("/publisher.js", (_req, res) => {
+  if (!PUBLISHER_JS) {res.status(503).send("Publisher bundle has not been built"); return;}
+  res.setHeader("Cache-Control", "public, max-age=60");
+  res.type("text/javascript").send(PUBLISHER_JS);
+});
 app.get("/health", (_req,res) => res.json({ status: "ok", service:"claimbot-x402", network, paymentEnabled:true }));
 // Resolve source-backed data before issuing an x402 challenge; never charge for empty/error responses.
 app.get("/api/opportunities", async (req, res, next) => {
