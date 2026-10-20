@@ -44,3 +44,9 @@ The live source probe is `npm run probe:arkiv --prefix claimbot-x402` (from repo
 **No real-money transactions are activated by this project.** Base Sepolia and its test USDC are the defaults. Never paste wallet private keys or recovery phrases into a chat or source repository.
 
 Records older than **7 days** since `verifiedAt` are rejected before a payment challenge; re-check official opportunities and publish a new signed current record to keep reports active. The live probe respects `ARKIV_TRUSTED_PUBLISHER` if explicitly overridden.
+
+## Wallet-connected publishing
+
+Open `/publish.html` on the deployed ClaimBot site in MetaMask's in-app browser or a desktop browser with MetaMask installed. The publishing form is public but rejects every account except `0x4aBAf297bd37bb3FA0036b45976A92a46d903688`. It never asks for a signing key or secret. Check every opportunity against the organizer before signing. Arkiv Tiramisu test GLM from the [official faucet](https://hub.arkiv.network/faucet) is needed in that publisher wallet.
+
+Build the on-site browser client via `npm run build:publisher --prefix claimbot-x402`. Hosting needs the Vercel project root `claimbot-x402`, with the build command `npm run build:publisher` to emit `public/publisher.js`. Publishing must be approved inside the connected wallet. Until a real transaction is confirmed and queried, the paid endpoint correctly returns 404 and cannot charge a customer.
