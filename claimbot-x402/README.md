@@ -34,3 +34,11 @@ An invalid project returns 400, unavailable Arkiv data returns 503, and zero eli
 Require all of `X402_NETWORK=base`, `ALLOW_MAINNET_X402_SELLER=true`, and `X402_FACILITATOR_URL` set to an HTTPS facilitator supporting Base mainnet. Do this only after a verified Base Sepolia 402 -> 200 round trip, correct USDC settlement and receiver balance, and confirmed source records. This seller never creates Arkiv records; run the separate `claimbot-arkiv` publisher.
 
 The shared BasePulse buyer remains `x402-agent` with independent spending safeguards. GitHub unit tests do not demonstrate a real settlement or production deployment.
+
+## Vercel preview deployment
+
+This seller is also a Vercel Node API with `api/index.ts`; `src/app.ts` exports the same Express app used locally. Set the Vercel project Root Directory to `claimbot-x402` and enable its default install. `vercel.json` rewrites the public `/health` and `/api/opportunities?project=ClaimBot` routes to that handler.
+
+The live source probe is `npm run probe:arkiv --prefix claimbot-x402` (from repository root). It only reads trusted-writer records from Arkiv Tiramisu; it never manufactures opportunities or signs transactions. Empty results will prevent paid calls. ClaimBot's older hardcoded Arkiv grant was due on October 18, 2026 and cannot be used for a current sale. A current, verified record must be published and signed by the designated Arkiv writer to unlock the x402 paid endpoint.
+
+**No real-money transactions are activated by this project.** Base Sepolia and its test USDC are the defaults. Never paste wallet private keys or recovery phrases into a chat or source repository.
