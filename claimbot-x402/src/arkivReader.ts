@@ -44,6 +44,11 @@ export function isPayableOpportunity(o: unknown, target: Project, now: Date): o 
     verified >= now.valueOf() - MAX_VERIFICATION_AGE_MS;
 }
 
+export function distinctByOpportunityId<T extends { opportunity: { id: string } }>(records: T[]): T[] {
+  const seen = new Set<string>();
+  return records.filter(record => { if (seen.has(record.opportunity.id)) return false; seen.add(record.opportunity.id); return true; });
+}
+
 export async function queryTrustedOpenOpportunities(
   target: Project,
   publisher: Address,
@@ -64,11 +69,11 @@ export async function queryTrustedOpenOpportunities(
     .createdBy(publisher)
     .limit(50)
     .fetch();
-  return page.entities.flatMap(entity => {
+  return distinctByOpportunityId(page.entities.flatMap(entity => {
     try {
       const opportunity = entity.toJson() as unknown;
       if (!isPayableOpportunity(opportunity, target, now)) return [];
       return [{ key: entity.key, owner: entity.owner, expiresAt: entity.expiresAt, opportunity }];
     } catch { return []; }
-  });
+  }));
 }
