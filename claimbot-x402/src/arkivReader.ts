@@ -5,6 +5,7 @@ import { http, type Address } from "viem";
 import type { Project } from "./preflight.js";
 
 const RPC = "https://rpc.tiramisu.db-chain.testnet.arkiv.network";
+export const MAX_VERIFICATION_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface Opportunity {
   id: string;
@@ -39,7 +40,8 @@ export function isPayableOpportunity(o: unknown, target: Project, now: Date): o 
   const deadline = Date.parse(v.deadline);
   const verified = Date.parse(v.verifiedAt);
   return Number.isFinite(deadline) && deadline > now.valueOf() &&
-    Number.isFinite(verified) && verified <= now.valueOf();
+    Number.isFinite(verified) && verified <= now.valueOf() &&
+    verified >= now.valueOf() - MAX_VERIFICATION_AGE_MS;
 }
 
 export async function queryTrustedOpenOpportunities(
