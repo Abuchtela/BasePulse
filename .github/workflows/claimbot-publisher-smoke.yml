@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Verify wallet page is public
         env:
-          SITE: https://claimbot-x402-h6uznifsp-abuchtelas-projects.vercel.app
+          SITE: https://claimbot-x402-git-feature-claimbot-a-1fefc3-abuchtelas-projects.vercel.app
         run: |
           set -euo pipefail
           status="$(curl --max-time 30 -sSL -o /tmp/publish.html -w '%{http_code}' "$SITE/publish.html")"
@@ -24,10 +24,15 @@ jobs:
           grep -q 'Sign &amp; publish on Arkiv testnet' /tmp/publish.html
       - name: Verify bundled browser SDK is accessible
         env:
-          SITE: https://claimbot-x402-h6uznifsp-abuchtelas-projects.vercel.app
+          SITE: https://claimbot-x402-git-feature-claimbot-a-1fefc3-abuchtelas-projects.vercel.app
         run: |
           set -euo pipefail
-          status="$(curl --max-time 30 -sSL -o /tmp/publisher.js -w '%{http_code}' "$SITE/publisher.js")"
+          status="000"
+          for attempt in $(seq 1 20); do
+            status="$(curl --max-time 30 -sSL -o /tmp/publisher.js -w '%{http_code}' "$SITE/publisher.js" || true)"
+            if [ "$status" = "200" ]; then break; fi
+            sleep 5
+          done
           echo "publisher JS status=$status"
           echo "JS bytes=$(wc -c < /tmp/publisher.js)"
           test "$status" = "200"
