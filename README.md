@@ -226,6 +226,12 @@ The development process included:
 
 See `AGENT_ARCHITECTURE.md` for detailed technical documentation.
 
+## 🌐 NEAR Cross-Chain Treasury Track
+
+The `near-cross-chain-treasury-agent` branch prepares BasePulse for the NEAR Build Beyond Boundaries Autonomous Business track. It maps the existing Base agent, policy controls, treasury records, and audit trail to a NEAR Intents/Chain Signatures extension without claiming unfinished integration work.
+
+See **[NEAR Hackathon Submission Brief](./docs/NEAR_HACKATHON_SUBMISSION.md)** for the verified foundation, proposed architecture, security constraints, MVP proof requirements, and submission checklist.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please:
