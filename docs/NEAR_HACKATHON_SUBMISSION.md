@@ -30,6 +30,10 @@ The current repository already contains the Base-side foundation:
 
 These are verified repository components. NEAR Intents and Chain Signatures are the proposed hackathon extension and must not be presented as complete until the adapter is implemented and tested.
 
+### Current implementation status
+
+The NEAR Intents/1Click adapter, policy gate, durable idempotency ledger, admin tRPC routes, provider-status tracking, and tests are now implemented. See [NEAR Intents Integration](./NEAR_INTENTS_INTEGRATION.md). A live funded swap and NEAR MPC Chain Signatures remain unproven and must not be claimed until verifiable testnet transaction links exist.
+
 ## Proposed system
 
 1. **Detect:** BasePulse scores a social trend and produces structured evidence.
