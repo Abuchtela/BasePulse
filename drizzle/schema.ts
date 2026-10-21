@@ -90,6 +90,27 @@ export type TreasuryTransaction = typeof treasuryTransactions.$inferSelect;
 export type InsertTreasuryTransaction = typeof treasuryTransactions.$inferInsert;
 
 /**
+ * Durable NEAR Intents audit records. The idempotency key is unique so a
+ * restarted process cannot quote or submit the same treasury action twice.
+ */
+export const nearIntentExecutions = mysqlTable("near_intent_executions", {
+  id: int("id").autoincrement().primaryKey(),
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull().unique(),
+  intentHash: varchar("intentHash", { length: 71 }).notNull(),
+  status: mysqlEnum("status", ["rejected", "quoted", "deposit_submitted", "processing", "success", "refunded", "failed"]).notNull(),
+  executionMode: mysqlEnum("executionMode", ["simulation", "live"]).notNull(),
+  estimatedAmountUSD: decimal("estimatedAmountUSD", { precision: 20, scale: 2 }).notNull(),
+  intent: json("intent").notNull(),
+  quote: json("quote"),
+  receipt: json("receipt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NearIntentExecution = typeof nearIntentExecutions.$inferSelect;
+export type InsertNearIntentExecution = typeof nearIntentExecutions.$inferInsert;
+
+/**
  * Social interactions and community engagement
  */
 export const socialInteractions = mysqlTable("social_interactions", {
