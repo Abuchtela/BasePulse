@@ -17,71 +17,16 @@ concurrency:
 
 jobs:
   smoke:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       SITE: https://claimbot-x402.vercel.app
+      EXPECTED_SHA: ${{ github.sha }}
+      DEPLOY_WAIT_SECONDS: '480'
     steps:
-      - name: Verify actual production API health and testnet configuration
-        run: |
-          set -euo pipefail
-          status=000
-          for attempt in 1 2 3 4 5 6; do
-            status="$(curl -sSL --max-time 30 -o /tmp/claimbot-health.json -w '%{http_code}' "$SITE/health" || true)"
-            if [ "$status" = 200 ]; then break; fi
-            echo "Health not ready (HTTP $status, attempt $attempt/6)"
-            sleep 10
-          done
-          echo "health HTTP $status"
-          test "$status" = 200
-          grep -q '"status":"ok"' /tmp/claimbot-health.json
-          grep -q '"service":"claimbot-x402"' /tmp/claimbot-health.json
-
-          config_status="$(curl -sSL --max-time 30 -o /tmp/claimbot-config.json -w '%{http_code}' "$SITE/config")"
-          echo "config HTTP $config_status"
-          test "$config_status" = 200
-          grep -q '"network":"eip155:84532"' /tmp/claimbot-config.json
-          grep -qi '0x748f6614Ea6289664bC8BeB84835E2F24fE52482' /tmp/claimbot-config.json
-          grep -qi '0x4aBAf297bd37bb3FA0036b45976A92a46d903688' /tmp/claimbot-config.json
-
-      - name: Verify wallet-connected Arkiv publisher page and script
-        run: |
-          set -euo pipefail
-          html_status="$(curl -sSL --max-time 30 -o /tmp/claimbot-publish.html -w '%{http_code}' "$SITE/publish.html")"
-          echo "publisher HTML HTTP $html_status"
-          test "$html_status" = 200
-          grep -q 'Connect publisher wallet' /tmp/claimbot-publish.html
-          grep -q 'Sign &amp; publish on Arkiv testnet' /tmp/claimbot-publish.html
-          js_status="$(curl -sSL --max-time 30 -o /tmp/claimbot-publisher.js -w '%{http_code}' "$SITE/publisher.js")"
-          echo "publisher JS HTTP $js_status"
-          test "$js_status" = 200
-          test "$(wc -c < /tmp/claimbot-publisher.js)" -gt 4000
-          grep -q 'eth_requestAccounts' /tmp/claimbot-publisher.js
-
-      - name: Verify invalid and empty opportunity requests cannot demand payment
-        run: |
-          set -euo pipefail
-          invalid_status="$(curl -sSL --max-time 30 -o /tmp/claimbot-invalid.json -w '%{http_code}' "$SITE/api/opportunities?project=Invalid")"
-          echo "invalid project HTTP $invalid_status"
-          test "$invalid_status" = 400
-          grep -q 'project must be BasePulse or ClaimBot' /tmp/claimbot-invalid.json
-
-          for project in ClaimBot BasePulse; do
-            status="$(curl -sSL --max-time 40 -D /tmp/claimbot-headers.txt -o /tmp/claimbot-opportunities.json -w '%{http_code}' "$SITE/api/opportunities?project=$project")"
-            echo "$project opportunity API HTTP $status"
-            case "$status" in
-              404)
-                grep -q 'No eligible verified opportunities currently available' /tmp/claimbot-opportunities.json
-                echo "$project: verified source has no payable records; payment correctly not requested"
-                ;;
-              402)
-                grep -iq '^payment-required:' /tmp/claimbot-headers.txt
-                echo "$project: x402 challenge exists; this is NOT proof of settlement"
-                ;;
-              *)
-                echo "$project returned unexpected HTTP $status; inspect deployment/runtime logs"
-                head -c 500 /tmp/claimbot-opportunities.json
-                exit 1
-                ;;
-            esac
-          done
+      - uses: actions/checkout@v4
+      - name: Test smoke assertions
+        run: python3 claimbot-x402/scripts/test-production-smoke.py
+      - name: Verify production revision, config, assets, and unpaid responses
+        run: python3 claimbot-x402/scripts/production-smoke.py

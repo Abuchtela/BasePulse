@@ -41,7 +41,11 @@ app.get("/publisher.js", (_req, res) => {
   res.setHeader("Cache-Control", "public, max-age=60");
   res.type("text/javascript").send(PUBLISHER_JS);
 });
-app.get("/health", (_req,res) => res.json({ status: "ok", service:"claimbot-x402", network, paymentEnabled:true }));
+app.get("/health", (_req,res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ status: "ok", service:"claimbot-x402", network, paymentEnabled:true,
+    revision: process.env.VERCEL_GIT_COMMIT_SHA ?? null });
+});
 // Resolve source-backed data before issuing an x402 challenge; never charge for empty/error responses.
 app.get("/api/opportunities", async (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
