@@ -1,53 +1,32 @@
-name: ClaimBot x402 public smoke
+name: ClaimBot x402 production smoke
 
 on:
   push:
-    branches:
-      - feature/claimbot-x402-deployable-api
+    branches: [main]
     paths:
+      - 'claimbot-x402/**'
       - '.github/workflows/claimbot-x402-public-smoke.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: claimbot-x402-production-smoke
+  cancel-in-progress: false
+
 jobs:
   smoke:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SITE: https://claimbot-x402.vercel.app
+      EXPECTED_SHA: ${{ github.sha }}
+      DEPLOY_WAIT_SECONDS: '480'
     steps:
-      - name: Verify deployed health endpoint is publicly accessible
-        env:
-          URL: https://claimbot-x402-npenuof7r-abuchtelas-projects.vercel.app
-        run: |
-          set -euo pipefail
-          status="$(curl -sSL --max-time 30 -o /tmp/claimbot-health.json -w '%{http_code}' "$URL/health")"
-          echo "health HTTP $status"
-          cat /tmp/claimbot-health.json
-          test "$status" = 200
-          grep -q '"status":"ok"' /tmp/claimbot-health.json
-      - name: Verify invalid project fails before payment
-        env:
-          URL: https://claimbot-x402-npenuof7r-abuchtelas-projects.vercel.app
-        run: |
-          set -euo pipefail
-          status="$(curl -sSL --max-time 30 -o /tmp/claimbot-invalid.json -w '%{http_code}' "$URL/api/opportunities?project=Invalid")"
-          echo "invalid project HTTP $status"
-          cat /tmp/claimbot-invalid.json
-          test "$status" = 400
-      - name: Check legitimate source state without making a payment
-        env:
-          URL: https://claimbot-x402-npenuof7r-abuchtelas-projects.vercel.app
-        run: |
-          set -euo pipefail
-          status="$(curl -sSL --max-time 40 -o /tmp/claimbot-real.json -w '%{http_code}' "$URL/api/opportunities?project=ClaimBot")"
-          echo "real opportunities HTTP $status"
-          cat /tmp/claimbot-real.json
-          if [ "$status" = 404 ]; then
-            grep -q "No eligible verified opportunities" /tmp/claimbot-real.json
-            echo "Confirmed no paid request was offered for zero records."
-          elif [ "$status" = 402 ]; then
-            echo "Payment challenge verified, pending an actual testnet settlement."
-          else
-            echo "Unexpected response: $status"
-            exit 1
-          fi
+      - uses: actions/checkout@v4
+      - name: Test smoke assertions
+        run: python3 claimbot-x402/scripts/test-production-smoke.py
+      - name: Verify production revision, config, assets, and unpaid responses
+        run: python3 claimbot-x402/scripts/production-smoke.py
