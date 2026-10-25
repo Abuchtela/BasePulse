@@ -15,6 +15,13 @@
       "when": 1770010744501,
       "tag": "0001_cold_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1792544100652,
+      "tag": "0002_fixed_solo",
+      "breakpoints": true
     }
   ]
 }
