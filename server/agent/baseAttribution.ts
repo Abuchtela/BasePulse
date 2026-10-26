@@ -11,24 +11,22 @@
  * the magic marker 0x8021802180218021 and the first 8 bytes encode the code.
  */
 
-import { encodePacked, keccak256, toHex } from "viem";
+import { Attribution } from "ox/erc8021";
 
 // Builder code registered on base.dev
 export const BASE_BUILDER_CODE = process.env.BASE_BUILDER_CODE || "bc_hi2cipof";
 
 /**
- * Compute the ERC-8021 dataSuffix for the given builder code.
- * Uses the same algorithm as ox's Attribution.toDataSuffix().
- *
- * Format: 0x + <8-byte truncated keccak of code> + 8021802180218021
+ * Compute the canonical ERC-8021 suffix with the implementation recommended
+ * by Base. Do not hand-roll or shorten the schema marker.
  */
-export function getAttributionSuffix(code: string = BASE_BUILDER_CODE): `0x${string}` {
-  // Hash the builder code and take first 8 bytes
-  const hash = keccak256(encodePacked(["string"], [code]));
-  const codeBytes = hash.slice(2, 18); // first 8 bytes = 16 hex chars
-  // ERC-8021 magic marker (8 bytes)
-  const magic = "8021802180218021";
-  return `0x${codeBytes}${magic}`;
+export function getAttributionSuffix(
+  code: string = BASE_BUILDER_CODE
+): `0x${string}` {
+  if (!/^bc_[a-z0-9]+$/i.test(code)) {
+    throw new Error("BASE_BUILDER_CODE must be a registered bc_ code");
+  }
+  return Attribution.toDataSuffix({ codes: [code] });
 }
 
 /**

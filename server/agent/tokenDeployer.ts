@@ -8,8 +8,8 @@
  */
 
 import { CdpClient } from "@coinbase/cdp-sdk";
-import { concatHex, encodeDeployData } from "viem";
-import { createDeployedToken, createTreasuryTransaction, updateTreasuryTransactionByTxHash } from "../db";
+import { concatHex, encodeDeployData, formatEther } from "viem";
+import { createDeployedToken, createTreasuryTransaction } from "../db";
 import { notifyOwner } from "../_core/notification";
 import { DATA_SUFFIX, BASE_BUILDER_CODE } from "./baseAttribution";
 
@@ -18,7 +18,6 @@ interface TokenDeploymentConfig {
   symbol: string;
   description: string;
   imageUrl?: string;
-  initialLiquidity: number; // in ETH
   trendTheme: string;
   sentimentScore: number;
 }
@@ -38,7 +37,9 @@ function createCdpClient(): CdpClient {
   const apiKeySecret = process.env.CDP_API_KEY_PRIVATE_KEY;
 
   if (!apiKeyId || !apiKeySecret) {
-    throw new Error("CDP_API_KEY_NAME or CDP_API_KEY_PRIVATE_KEY environment variable not set");
+    throw new Error(
+      "CDP_API_KEY_NAME or CDP_API_KEY_PRIVATE_KEY environment variable not set"
+    );
   }
 
   return new CdpClient({ apiKeyId, apiKeySecret });
@@ -53,7 +54,10 @@ function createCdpClient(): CdpClient {
  * @param symbol - Token symbol
  * @returns Contract creation data as a `0x`-prefixed hex string
  */
-function encodeERC20DeployBytecode(name: string, symbol: string): `0x${string}` {
+function encodeERC20DeployBytecode(
+  name: string,
+  symbol: string
+): `0x${string}` {
   const rawContractBytecode = process.env.ERC20_DEPLOY_BYTECODE;
 
   if (!rawContractBytecode || rawContractBytecode.trim() === "") {
@@ -114,12 +118,18 @@ export async function deployToken(
   try {
     const cdp = createCdpClient();
 
-    console.log(`[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using CDP SDK`);
-    console.log(`[TokenDeployer] Builder attribution: code=${BASE_BUILDER_CODE} suffix=${DATA_SUFFIX}`);
+    console.log(
+      `[TokenDeployer] Deploying token: ${config.name} (${config.symbol}) using CDP SDK`
+    );
+    console.log(
+      `[TokenDeployer] Builder attribution: code=${BASE_BUILDER_CODE} suffix=${DATA_SUFFIX}`
+    );
 
     // Get or create a named server-side EVM account to avoid spawning a new
     // account on every deployment call
-    const account = await cdp.evm.getOrCreateAccount({ name: "basepulse-deployer" });
+    const account = await cdp.evm.getOrCreateAccount({
+      name: "basepulse-deployer",
+    });
 
     // Obtain a network-scoped account handle for Base mainnet
     const networkAccount = await account.useNetwork("base");
@@ -133,26 +143,22 @@ export async function deployToken(
       transaction: { data: deployData },
     });
 
-    console.log(`[TokenDeployer] Deployment tx sent: ${transactionHash}. Waiting for receipt…`);
-
-    // Record the outgoing deployment transaction immediately as "pending"
-    // so it is tracked even if the process is interrupted before confirmation.
-    await createTreasuryTransaction({
-      type: "deployment_cost",
-      amount: "0" as any, // Sponsored by Paymaster
-      amountUSD: "0" as any,
-      txHash: transactionHash,
-      description: `Deployment for ${config.symbol} (Sponsored by Coinbase Paymaster)`,
-      status: "pending",
-    });
+    console.log(
+      `[TokenDeployer] Deployment tx sent: ${transactionHash}. Waiting for receipt…`
+    );
 
     // Wait for the transaction to be mined and get the confirmed contract address
-    const receipt = await networkAccount.waitForTransactionReceipt({ transactionHash });
+    const receipt = await networkAccount.waitForTransactionReceipt({
+      transactionHash,
+    });
 
+    if (receipt.status !== "success") {
+      throw new Error(`Transaction ${transactionHash} reverted`);
+    }
     if (!receipt.contractAddress) {
-      // Mark the pending treasury record as failed since the tx produced no contract
-      await updateTreasuryTransactionByTxHash(transactionHash, { status: "failed" });
-      throw new Error(`Transaction ${transactionHash} did not produce a contract address`);
+      throw new Error(
+        `Transaction ${transactionHash} did not produce a contract address`
+      );
     }
 
     const tokenAddress = receipt.contractAddress;
@@ -173,12 +179,18 @@ export async function deployToken(
         receipt.blockNumber !== undefined && receipt.blockNumber !== null
           ? Number(receipt.blockNumber)
           : undefined,
-      initialLiquidity: config.initialLiquidity as any,
       status: "deployed",
     });
 
-    // Confirm the pending treasury transaction now that we have the contract address
-    await updateTreasuryTransactionByTxHash(transactionHash, {
+    // Record the actual receipt-derived gas cost. This does not claim that
+    // liquidity was seeded or that a paymaster sponsored the transaction.
+    const gasCostWei = receipt.gasUsed * receipt.effectiveGasPrice;
+    await createTreasuryTransaction({
+      type: "deployment_cost",
+      amount: formatEther(gasCostWei) as any,
+      amountUSD: null,
+      txHash: transactionHash,
+      description: `Confirmed Base deployment gas for ${config.symbol}`,
       status: "confirmed",
       tokenAddress,
     });
@@ -186,7 +198,7 @@ export async function deployToken(
     // Notify owner of successful deployment
     await notifyOwner({
       title: `🚀 Token Deployed: ${config.symbol}`,
-      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using CDP SDK.\n\nToken Address: ${tokenAddress}\nBuilder Code: ${BASE_BUILDER_CODE}\nSponsored by Coinbase Paymaster.`,
+      content: `BasePulse deployed a new token "${config.name}" (${config.symbol}) for the trend "${config.trendTheme}" using CDP SDK.\n\nToken Address: ${tokenAddress}\nTransaction: ${transactionHash}\nBuilder Code: ${BASE_BUILDER_CODE}.`,
     });
 
     return {
@@ -208,26 +220,5 @@ export async function deployToken(
       success: false,
       error: errorMessage,
     };
-  }
-}
-
-/**
- * Collect trading fees from deployed token
- */
-export async function collectTradingFees(tokenAddress: string): Promise<number> {
-  console.log(`[TokenDeployer] Checking fees for ${tokenAddress}`);
-  return 0;
-}
-
-/**
- * Reinvest treasury funds
- */
-export async function reinvestTreasuryFunds(amount: number): Promise<boolean> {
-  try {
-    console.log(`[TokenDeployer] Reinvesting ${amount} ETH from treasury using CDP SDK`);
-    return true;
-  } catch (error) {
-    console.error("[TokenDeployer] Reinvestment failed:", error);
-    return false;
   }
 }

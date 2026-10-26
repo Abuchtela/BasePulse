@@ -19,14 +19,14 @@ Autonomous agents can discover opportunities, but giving them unrestricted walle
 
 The current repository already contains the Base-side foundation:
 
-| Capability | Existing implementation | NEAR extension |
-| --- | --- | --- |
-| Signal discovery | `server/agent/trendMonitor.ts` | Reuse the normalized trend and confidence output as intent input |
-| Autonomous orchestration | `server/agent/autonomousLoop.ts` | Add a policy-gated cross-chain execution stage |
-| Base token execution | `server/agent/tokenDeployer.ts` | Keep Base execution; route cross-chain actions through a NEAR adapter |
-| Treasury records | `server/db.ts` and treasury tables | Store intent ID, policy result, destination chain, tx hash, and outcome |
-| Audit proof | `contracts/ArcTreasuryProof.sol` and Base transaction logs | Anchor a signed execution receipt after each completed or rejected intent |
-| Operator visibility | React dashboard and tRPC backend | Show quote, approval policy, execution status, and receipt |
+| Capability               | Existing implementation                                    | NEAR extension                                                            |
+| ------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Signal discovery         | `server/agent/trendMonitor.ts`                             | Reuse the normalized trend and confidence output as intent input          |
+| Autonomous orchestration | `server/agent/autonomousLoop.ts`                           | Add a policy-gated cross-chain execution stage                            |
+| Base token execution     | `server/agent/tokenDeployer.ts`                            | Keep Base execution; route cross-chain actions through a NEAR adapter     |
+| Treasury records         | `server/db.ts` and treasury tables                         | Store intent ID, policy result, destination chain, tx hash, and outcome   |
+| Audit proof              | `contracts/ArcTreasuryProof.sol` and Base transaction logs | Anchor a signed execution receipt after each completed or rejected intent |
+| Operator visibility      | React dashboard and tRPC backend                           | Show quote, approval policy, execution status, and receipt                |
 
 These are verified repository components. NEAR Intents and Chain Signatures are the proposed hackathon extension and must not be presented as complete until the adapter is implemented and tested.
 
@@ -46,7 +46,7 @@ The NEAR Intents/1Click adapter, policy gate, durable idempotency ledger, admin 
 
 ## Security constraints
 
-- Default to simulation mode.
+- Default to disabled; testnet execution still requires real source evidence and real testnet receipts.
 - Deny unknown assets, chains, recipients, and expired intents.
 - Enforce both per-action and rolling daily spending caps.
 - Require an idempotency key so retries cannot spend twice.
@@ -59,7 +59,7 @@ The NEAR Intents/1Click adapter, policy gate, durable idempotency ledger, admin 
 
 A credible working submission must demonstrate one complete testnet flow:
 
-- ingest a sample trend signal;
+- ingest a current trend signal with public source evidence;
 - produce a typed cross-chain treasury intent;
 - reject one intent that violates a spending rule;
 - approve one intent that satisfies policy;
@@ -80,13 +80,13 @@ A credible working submission must demonstrate one complete testnet flow:
 
 ## Submission description draft
 
-**BasePulse Cross-Chain Treasury Agent** is a policy-controlled autonomous business agent. It monitors social signals, turns qualified opportunities into typed treasury intents, and executes approved actions across Base and NEAR-compatible routes. Every action passes deterministic spending, allowlist, expiry, slippage, cooldown, and replay checks. BasePulse records both rejected and completed decisions and anchors a verifiable receipt containing the policy outcome and transaction evidence. The result is an agent that can operate a treasury without handing an LLM unrestricted wallet authority.
+**Proposed submission:** BasePulse would extend its policy-controlled Base work into a cross-chain treasury agent. The target flow is to read current social evidence, create a typed treasury intent, apply deterministic spending, allowlist, expiry, slippage, cooldown, and replay checks, then execute through a NEAR-compatible route and record the receipt. This paragraph describes the intended submission, not completed functionality; the cross-chain execution and receipt path still require public transaction evidence.
 
 ## Build sequence
 
 1. Define `TreasuryIntent`, `PolicyDecision`, and `ExecutionReceipt` schemas.
 2. Implement the deterministic policy evaluator and unit tests.
-3. Implement a NEAR adapter behind a simulation-by-default interface.
+3. Implement a NEAR adapter that is disabled by default and test only with real testnet transactions.
 4. Wire the adapter into `autonomousLoop.ts` after trend validation.
 5. Persist intent lifecycle data and expose it through tRPC.
 6. Add dashboard views for pending, rejected, submitted, and confirmed intents.

@@ -1,264 +1,105 @@
-# BasePulse: Autonomous Trend-to-Token Agent for Base
+# BasePulse
 
-BasePulse is a fully autonomous agent that monitors social trends on X and Farcaster, validates them against on-chain metrics, and autonomously deploys themed ERC20 tokens on the Base blockchain—all without human intervention.
+BasePulse is an evidence-first Base agent project. Its repository contains a Base token-deployment path, a fail-closed trend-analysis loop, an Arc mainnet proof registry and read-only treasury tools, a Base Registry browser, and ClaimBot payment/data components.
 
-## 🚀 Key Features
+## Verified status
 
-- **Autonomous Trend Monitoring**: Continuously scans X and Farcaster for Base ecosystem trends using LLM-powered sentiment analysis
-- **On-Chain Validation**: Cross-references social trends with DexScreener metrics to ensure deployment quality
-- **Autonomous Token Deployment**: Deploys ERC20 tokens with Uniswap V4 liquidity pools using Clanker SDK
-- **Treasury Management**: Automatically collects trading fees and reinvests them into Base ecosystem initiatives
-- **Real-Time Dashboard**: Web-based interface for monitoring agent operations, deployed tokens, and treasury
-- **Community Interaction**: Autonomous social media posting and community engagement
-- **Comprehensive Logging**: Full audit trail of all decisions, deployments, and transactions
+| Capability                         | Current status                                                                                  | Evidence requirement                                                              |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Base ERC-20 deployment through CDP | Implemented code path; requires credentials, compiled bytecode, funds, and a successful receipt | Transaction hash, successful Base receipt, and contract address                   |
+| Social trend ingestion             | Requires a configured HTTPS feed; no generated fallback                                         | Each post must include an HTTPS source URL and a timestamp less than 24 hours old |
+| Base onchain metrics               | Requires a configured HTTPS metrics source; no generated fallback                               | Chain ID 8453, observation less than 15 minutes old, and an HTTPS evidence URL    |
+| Trend analysis                     | Implemented with source-index validation                                                        | Every returned trend must cite supplied post indexes                              |
+| Liquidity deployment               | **Not implemented**                                                                             | No claim until a real transaction and pool address exist                          |
+| Fee collection                     | **Not implemented**                                                                             | No claim until a real collection transaction exists                               |
+| Treasury reinvestment              | **Not implemented**                                                                             | No claim until a real transfer/swap transaction exists                            |
+| Arc proof registry                 | Deployed and independently verified on Arc mainnet                                              | See [Arc treasury evidence](docs/ARC_TREASURY.md)                                 |
+| NEAR Intents                       | Submission planning exists; implementation is not on `main`                                     | See [NEAR submission brief](docs/NEAR_HACKATHON_SUBMISSION.md)                    |
 
-## 🏗️ Architecture
+The dashboard displays stored database records. Its recorded treasury net is **not** represented as a live wallet balance.
 
-BasePulse consists of three main components:
+## Non-fabrication rule
 
-### 1. **Trend Monitor Skill**
-Analyzes social media posts using Claude AI to extract trending themes and sentiment scores. Validates trends against on-chain volume data before triggering deployments.
+- No generated posts, random market values, fabricated opportunities, pretend transactions, or success responses.
+- Missing credentials or evidence stop the relevant operation.
+- A deployment is successful only after a successful onchain receipt returns a contract address.
+- Unimplemented functionality is labeled unimplemented instead of being replaced by simulation.
 
-### 2. **Token Deployer Module**
-Handles autonomous ERC20 token deployment on Base using the Clanker SDK. Manages wallet interactions, transaction execution, and treasury accounting.
+## Autonomous-loop configuration
 
-### 3. **Autonomous Loop Orchestrator**
-Coordinates the entire workflow, running at regular intervals to scan trends, validate them, and trigger deployments. Includes safety limits and error handling.
-
-## 📊 On-Chain Primitives
-
-BasePulse implements several key blockchain primitives:
-
-- **ERC20 Token Creation**: Deploy custom tokens with metadata and social links
-- **Uniswap V4 Integration**: Create liquidity pools with anti-sniper protection
-- **Treasury Management**: On-chain fund tracking and reinvestment logic
-- **Fee Collection**: Automatic fee harvesting from deployed tokens
-- **Transaction Tracking**: Full audit trail of all on-chain operations
-
-## 🎯 Use Case: Autonomous Venture Agent
-
-Unlike traditional chatbots, BasePulse acts as a venture agent that:
-1. Identifies promising trends in the Base ecosystem
-2. Deploys capital (tokens) to capture those opportunities
-3. Manages the resulting treasury autonomously
-4. Reinvests profits into new initiatives
-
-This creates a self-sustaining economic loop where the agent generates value without human direction.
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React 19 + Tailwind CSS 4 + shadcn/ui
-- **Backend**: Express 4 + tRPC 11
-- **Database**: MySQL with Drizzle ORM
-- **Blockchain**: Viem + Clanker SDK for Base network
-- **AI/LLM**: Claude (Anthropic) for trend analysis
-- **Agent Framework**: OpenClaw for autonomous operations
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js 22+
-- pnpm
-- MySQL database
-- Base network RPC endpoint
-- Private key with ETH for gas
-- OpenAI API key
-
-### Setup
+The loop is off unless `BASEPULSE_AGENT_ENABLED=true`. When enabled, it also requires:
 
 ```bash
-# Clone repository
-git clone https://github.com/Abuchtela/BasePulse.git
-cd BasePulse
-cd basepulse-agent
+BASEPULSE_SOCIAL_FEED_URL=https://your-source.example/posts
+BASEPULSE_SOCIAL_FEED_BEARER_TOKEN=
+BASEPULSE_ONCHAIN_METRICS_URL=https://your-source.example/base-metrics
+BASEPULSE_ONCHAIN_METRICS_BEARER_TOKEN=
+```
 
-# Install dependencies
+Social response:
+
+```json
+{
+  "posts": [
+    {
+      "text": "Original post text",
+      "sourceUrl": "https://public-source.example/post/123",
+      "publishedAt": "2026-10-23T20:00:00.000Z"
+    }
+  ]
+}
+```
+
+Metrics response:
+
+```json
+{
+  "chainId": 8453,
+  "volume24h": 0,
+  "volumeUSD24h": 0,
+  "activeAddresses": 0,
+  "transactionCount": 0,
+  "observedAt": "2026-10-23T20:00:00.000Z",
+  "sourceUrl": "https://public-source.example/evidence"
+}
+```
+
+The numeric values above document the response shape only. BasePulse does not ship them as runtime data.
+
+## Base deployment requirements
+
+```bash
+CDP_API_KEY_NAME=
+CDP_API_KEY_PRIVATE_KEY=
+ERC20_DEPLOY_BYTECODE=
+BASE_BUILDER_CODE=bc_hi2cipof
+```
+
+`ERC20_DEPLOY_BYTECODE` must be real compiled creation bytecode for a contract whose constructor is `(string name, string symbol)`. Builder attribution is encoded with the official `ox/erc8021` implementation.
+
+The deployer does not claim to create liquidity. It records the receipt-derived gas cost after confirmation.
+
+## Run and verify
+
+```bash
 pnpm install
-
-# Configure environment
-cp .env.example .env.local
-# Edit .env.local with your configuration
-
-# Set up database
-pnpm db:push
-
-# Start development server
+pnpm test
+pnpm check
 pnpm dev
 ```
 
-## 🚀 Usage
+Arc deployment verification is handled separately by `.github/workflows/arc-verify-deploy.yml` and `scripts/verify-arc-deployment.mjs`.
 
-### Start the Agent
+## Evidence documents
 
-```bash
-# Development
-pnpm dev
+- [Arc treasury integration and mainnet proof](docs/ARC_TREASURY.md)
+- [Arc microgrant submission facts](docs/ARC_MICROGRANTS_SUBMISSION.md)
+- [NEAR submission brief and incomplete-work disclosure](docs/NEAR_HACKATHON_SUBMISSION.md)
+- [ClaimBot x402 evidence policy](claimbot-x402/README.md)
 
-# Production
-pnpm build
-pnpm start
-```
+## Security
 
-### Access Dashboard
-
-Open `http://localhost:3000/dashboard` to monitor:
-- Deployed tokens and their performance
-- Treasury balance and transaction history
-- Real-time trend analysis and sentiment scores
-- Community interactions and agent responses
-
-### Configure Autonomous Loop
-
-Edit the configuration in `server/agent/autonomousLoop.ts`:
-
-```typescript
-const config = {
-  enabled: true,
-  intervalMinutes: 15,              // Run every 15 minutes
-  minSentimentScore: 60,            // 0-100 scale
-  minMentions: 5,                   // Minimum mentions
-  minVolume24hUSD: 100000,          // Minimum on-chain volume
-  maxDeploymentsPerDay: 10,         // Safety limit
-};
-```
-
-## 📚 Documentation
-
-- **[Agent Architecture](./AGENT_ARCHITECTURE.md)** - Detailed technical architecture and design
-- **[Deployment Guide](./DEPLOYMENT_GUIDE.md)** - Production deployment and configuration
-- **[API Reference](./server/routers.ts)** - tRPC API endpoints
-
-## 🗄️ Database Schema
-
-BasePulse uses the following main tables:
-
-- **deployed_tokens**: Tracks all tokens deployed by the agent
-- **trend_analysis**: Historical trend analysis results
-- **treasury_transactions**: All treasury movements
-- **social_interactions**: Community engagement records
-- **agent_metrics**: Performance and operational metrics
-
-## 🔐 Security
-
-- Private keys stored securely in environment variables
-- Rate limiting on deployments (max 10 per day)
-- Multiple validation checks before deployment
-- Comprehensive error handling and logging
-- Owner notifications for all significant events
-
-## 📈 Performance Metrics
-
-The dashboard displays:
-- Total tokens deployed
-- Treasury balance and growth
-- Deployment success rate
-- Average sentiment score of deployed tokens
-- Community engagement metrics
-
-## 🔄 Autonomous Loop Workflow
-
-1. **Scan** - Fetch recent posts from X/Farcaster
-2. **Analyze** - Extract trends and sentiment using LLM
-3. **Validate** - Check on-chain metrics and thresholds
-4. **Deploy** - Create token if conditions met
-5. **Collect** - Harvest trading fees
-6. **Reinvest** - Allocate treasury funds
-7. **Report** - Log metrics and notify owner
-
-## 🎮 Dashboard Features
-
-### Pulse Board
-View all deployed tokens with:
-- Token name, symbol, and trend theme
-- Sentiment score and market cap
-- 24h volume and holder count
-- Current status (pending, deployed, active, inactive)
-
-### Treasury Stats
-Monitor financial health:
-- Total available balance
-- Fee collection history
-- Reinvestment tracking
-- Transaction details
-
-### Sentiment Meter
-Track trending themes:
-- Real-time sentiment scores
-- Mention counts
-- On-chain volume validation
-- Deployment triggers
-
-### Community Interactions
-Engage with users:
-- Recent social media posts
-- Sentiment analysis (positive/neutral/negative)
-- Agent responses
-- Engagement metrics
-
-## 🏆 Competition Submission
-
-This agent was built for the **Base Build OpenClaw Agent Competition** with a 5ETH prize pool. It demonstrates:
-
-✅ **Implementation of On-Chain Primitives**
-- Token deployment with Uniswap V4
-- Treasury management on-chain
-- Fee collection and reinvestment
-
-✅ **Novelty of Use Case**
-- Autonomous venture agent model
-- Trend-to-token pipeline
-- Self-sustaining economic loop
-
-✅ **No-Human-In-The-Loop**
-- Fully autonomous decision-making
-- Autonomous social posting
-- Autonomous fund management
-
-## 📝 Building Process Documentation
-
-The development process included:
-1. Research on OpenClaw framework and Base ecosystem
-2. Design of autonomous agent architecture
-3. Implementation of trend analysis engine
-4. Integration of Clanker SDK for token deployment
-5. Dashboard development for monitoring
-6. Comprehensive testing and validation
-
-See `AGENT_ARCHITECTURE.md` for detailed technical documentation.
-
-## 🌐 NEAR Cross-Chain Treasury Track
-
-The `near-cross-chain-treasury-agent` branch prepares BasePulse for the NEAR Build Beyond Boundaries Autonomous Business track. It maps the existing Base agent, policy controls, treasury records, and audit trail to a NEAR Intents/Chain Signatures extension without claiming unfinished integration work.
-
-See **[NEAR Hackathon Submission Brief](./docs/NEAR_HACKATHON_SUBMISSION.md)** for the verified foundation, proposed architecture, security constraints, MVP proof requirements, and submission checklist.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
-## 🔗 Links
-
-- **GitHub**: https://github.com/Abuchtela/BasePulse
-- **Base Network**: https://base.org
-- **Clanker**: https://clanker.world
-- **OpenClaw**: https://openclaw.ai
-
-## 💬 Support
-
-For questions or issues:
-- Check the [Deployment Guide](./DEPLOYMENT_GUIDE.md)
-- Review [Agent Architecture](./AGENT_ARCHITECTURE.md)
-- Open an issue on GitHub
-
----
-
-**BasePulse** - Autonomous Trend-to-Token Engine for Base Ecosystem
-
-Built with ❤️ for the Base Build OpenClaw Agent Competition
+- Never commit wallet keys, API secrets, session cookies, or seed phrases.
+- Keep the autonomous loop disabled until verified sources, spending policy, and funded execution credentials are deliberately configured.
+- Treat database rows as records, not proof; use public receipts and contract state for onchain claims.
+- Review token bytecode and transaction parameters before enabling mainnet execution.

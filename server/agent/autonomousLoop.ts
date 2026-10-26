@@ -3,9 +3,18 @@
  * Coordinates trend monitoring, analysis, and token deployment
  */
 
-import { analyzeSocialTrends, validateTrendThreshold, storeTrendAnalysis, generateTokenMetadata } from "./trendMonitor";
-import { deployToken, collectTradingFees, reinvestTreasuryFunds } from "./tokenDeployer";
+import {
+  analyzeSocialTrends,
+  validateTrendThreshold,
+  storeTrendAnalysis,
+  generateTokenMetadata,
+} from "./trendMonitor";
+import { deployToken } from "./tokenDeployer";
 import { getTreasuryBalance, createAgentMetric } from "../db";
+import {
+  fetchVerifiedOnChainMetrics,
+  fetchVerifiedSocialPosts,
+} from "./verifiedSources";
 
 interface AutonomousLoopConfig {
   enabled: boolean;
@@ -22,7 +31,9 @@ let lastResetDate = new Date().toDateString();
 /**
  * Main autonomous loop - runs periodically to monitor trends and deploy tokens
  */
-export async function runAutonomousLoop(config: AutonomousLoopConfig): Promise<void> {
+export async function runAutonomousLoop(
+  config: AutonomousLoopConfig
+): Promise<void> {
   if (!config.enabled) {
     console.log("[AutonomousLoop] Loop is disabled");
     return;
@@ -38,24 +49,18 @@ export async function runAutonomousLoop(config: AutonomousLoopConfig): Promise<v
       lastResetDate = today;
     }
 
-    // Step 1: Fetch recent social posts (mock - in production, integrate with X/Farcaster APIs)
-    const mockPosts = generateMockPosts();
+    // Step 1: Fetch externally sourced posts with HTTPS evidence and timestamps.
+    // Missing, stale, or malformed evidence aborts this iteration.
+    const posts = await fetchVerifiedSocialPosts();
 
     // Step 2: Analyze trends using LLM
     console.log("[AutonomousLoop] Analyzing social trends...");
-    const trends = await analyzeSocialTrends(mockPosts);
+    const trends = await analyzeSocialTrends(posts);
     console.log(`[AutonomousLoop] Found ${trends.length} potential trends`);
+    const onChainMetrics = await fetchVerifiedOnChainMetrics();
 
     // Step 3: For each trend, validate against on-chain metrics and potentially deploy
     for (const trend of trends) {
-      // Mock on-chain metrics (in production, query DexScreener API)
-      const onChainMetrics = {
-        volume24h: Math.random() * 1000,
-        volumeUSD24h: Math.random() * 2500000,
-        activeAddresses: Math.floor(Math.random() * 10000),
-        transactionCount: Math.floor(Math.random() * 50000),
-      };
-
       const isValid = validateTrendThreshold(trend, onChainMetrics, {
         minSentimentScore: config.minSentimentScore,
         minMentions: config.minMentions,
@@ -63,28 +68,36 @@ export async function runAutonomousLoop(config: AutonomousLoopConfig): Promise<v
       });
 
       if (isValid && deploymentCountToday < config.maxDeploymentsPerDay) {
-        console.log(`[AutonomousLoop] Trend "${trend.theme}" passed validation, deploying token...`);
+        console.log(
+          `[AutonomousLoop] Trend "${trend.theme}" passed validation, deploying token...`
+        );
 
         // Generate token metadata
-        const tokenMetadata = generateTokenMetadata(trend.theme, trend.sentimentScore);
+        const tokenMetadata = generateTokenMetadata(
+          trend.theme,
+          trend.sentimentScore
+        );
 
         // Deploy token
         const deploymentResult = await deployToken({
           ...tokenMetadata,
           description: tokenMetadata.description,
-          initialLiquidity: 0.5, // 0.5 ETH initial liquidity
           trendTheme: trend.theme,
           sentimentScore: trend.sentimentScore,
         });
 
         if (deploymentResult.success) {
-          console.log(`[AutonomousLoop] Token deployed successfully: ${deploymentResult.tokenAddress}`);
+          console.log(
+            `[AutonomousLoop] Token deployed successfully: ${deploymentResult.tokenAddress}`
+          );
           deploymentCountToday++;
 
           // Store trend analysis with deployment info
           await storeTrendAnalysis(trend, onChainMetrics, true);
         } else {
-          console.error(`[AutonomousLoop] Deployment failed: ${deploymentResult.error}`);
+          console.error(
+            `[AutonomousLoop] Deployment failed: ${deploymentResult.error}`
+          );
           await storeTrendAnalysis(trend, onChainMetrics, false);
         }
       } else {
@@ -93,24 +106,9 @@ export async function runAutonomousLoop(config: AutonomousLoopConfig): Promise<v
       }
     }
 
-    // Step 4: Collect trading fees from deployed tokens (periodic task)
-    console.log("[AutonomousLoop] Collecting trading fees...");
-    // In production, iterate through all deployed tokens and collect fees
-    // const tokens = await getDeployedTokens();
-    // for (const token of tokens) {
-    //   await collectTradingFees(token.tokenAddress);
-    // }
-
-    // Step 5: Check treasury balance and potentially reinvest
+    // Read the recorded ledger balance for observability only. No fee collection
+    // or reinvestment is claimed because those transaction paths are not implemented.
     const treasuryBalance = await getTreasuryBalance();
-    const balanceNum = parseFloat(treasuryBalance);
-
-    if (balanceNum > 1.0) {
-      // Reinvest if balance exceeds 1 ETH
-      console.log("[AutonomousLoop] Treasury balance sufficient, reinvesting...");
-      const reinvestAmount = balanceNum * 0.1; // Reinvest 10% of balance
-      await reinvestTreasuryFunds(reinvestAmount);
-    }
 
     // Step 6: Record metrics
     await createAgentMetric({
@@ -138,25 +136,11 @@ export async function runAutonomousLoop(config: AutonomousLoopConfig): Promise<v
 }
 
 /**
- * Generate mock social posts for testing
- * In production, fetch from X/Farcaster APIs
- */
-function generateMockPosts(): string[] {
-  const themes = [
-    "Base ecosystem growth",
-    "DeFi innovation on Layer 2",
-    "Coinbase integration",
-    "Ethereum scaling solutions",
-    "Smart contract security",
-  ];
-
-  return themes.map((theme) => `Just saw amazing activity in ${theme}! #Base #Crypto`);
-}
-
-/**
  * Schedule autonomous loop to run at regular intervals
  */
-export function scheduleAutonomousLoop(config: AutonomousLoopConfig): NodeJS.Timer {
+export function scheduleAutonomousLoop(
+  config: AutonomousLoopConfig
+): NodeJS.Timer {
   const intervalMs = config.intervalMinutes * 60 * 1000;
 
   // Run immediately on first start

@@ -1,259 +1,78 @@
-# BasePulse Agent Architecture
+# BasePulse agent architecture — verified state
 
-## Overview
+## Execution boundary
 
-BasePulse is an autonomous agent system that monitors social trends on X and Farcaster, validates them against on-chain metrics, and autonomously deploys themed ERC20 tokens on the Base blockchain. The system operates without human intervention, making deployment decisions based on validated trend data and treasury management rules.
+The autonomous loop is disabled by default. Enabling it requires live HTTPS social and Base-mainnet metrics sources. Either source being absent, stale, malformed, or unsupported aborts the iteration. There is no generated-data fallback.
 
-## System Architecture
-
-### Core Components
-
-#### 1. Trend Monitor Skill (`server/agent/trendMonitor.ts`)
-The trend monitoring component continuously analyzes social media posts using LLM-powered sentiment analysis. It extracts trending themes, calculates sentiment scores, and validates trends against on-chain metrics.
-
-**Key Functions:**
-- `analyzeSocialTrends()` - Uses Claude to extract themes and sentiment from social posts
-- `validateTrendThreshold()` - Checks if trend meets deployment criteria
-- `storeTrendAnalysis()` - Persists trend data to database
-- `generateTokenMetadata()` - Creates token name, symbol, and description from trend
-
-**Configuration:**
-```typescript
-{
-  minSentimentScore: 60,        // 0-100 scale
-  minMentions: 5,               // Minimum mentions to consider
-  minVolume24hUSD: 100000,      // Minimum on-chain volume in USD
-}
+```text
+verified posts -> evidence-linked LLM analysis -> verified Base metrics
+               -> threshold decision -> CDP deployment -> successful receipt
+               -> database record
 ```
 
-#### 2. Token Deployer Module (`server/agent/tokenDeployer.ts`)
-Handles the autonomous deployment of ERC20 tokens on Base using the Clanker SDK. Manages wallet interactions, transaction execution, and treasury accounting.
+## Components
 
-**Key Functions:**
-- `deployToken()` - Deploys token with Uniswap V4 liquidity pool
-- `collectTradingFees()` - Collects fees from deployed tokens
-- `reinvestTreasuryFunds()` - Reinvests treasury balance into new initiatives
+### `server/agent/verifiedSources.ts`
 
-**Features:**
-- Secure private key handling via environment variables
-- Transaction tracking and error handling
-- Automatic owner notifications on deployment events
-- Treasury transaction logging
+- Requires HTTPS endpoints.
+- Requires social timestamps within 24 hours.
+- Requires Base chain ID `8453` and metrics observed within 15 minutes.
+- Requires public HTTPS evidence URLs.
+- Throws instead of manufacturing missing inputs.
 
-#### 3. Autonomous Loop Orchestrator (`server/agent/autonomousLoop.ts`)
-Coordinates the entire autonomous workflow, running at regular intervals to scan trends, validate them, and trigger deployments.
+### `server/agent/trendMonitor.ts`
 
-**Loop Cycle:**
-1. Fetch recent social posts from X/Farcaster
-2. Analyze posts using LLM to extract trends
-3. For each trend:
-   - Fetch on-chain metrics from DexScreener
-   - Validate against deployment thresholds
-   - Deploy token if conditions met
-   - Store analysis results
-4. Collect trading fees from existing tokens
-5. Check treasury balance and reinvest if needed
-6. Record metrics and log activity
+- Sends only supplied posts to the LLM.
+- Requires the model to return supporting post indexes.
+- Derives mention counts and evidence URLs from those indexes instead of trusting an invented count.
+- Stores the evidence URLs, metrics source, observation timestamp, and chain ID.
 
-**Configuration:**
-```typescript
-{
-  enabled: true,
-  intervalMinutes: 15,              // Run every 15 minutes
-  minSentimentScore: 60,
-  minMentions: 5,
-  minVolume24hUSD: 100000,
-  maxDeploymentsPerDay: 10,         // Safety limit
-}
-```
+### `server/agent/autonomousLoop.ts`
 
-### Data Models
+- Runs only when explicitly enabled.
+- Applies sentiment, mention, volume, and daily deployment limits.
+- Does not collect fees or reinvest funds; those paths are not implemented.
+- Records a successful deployment only after the deployer returns confirmed onchain evidence.
 
-#### Deployed Tokens Table
-Tracks all tokens deployed by the agent with metadata and performance metrics.
+### `server/agent/tokenDeployer.ts`
 
-```sql
-CREATE TABLE deployed_tokens (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  tokenAddress VARCHAR(42) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  symbol VARCHAR(20) NOT NULL,
-  description TEXT,
-  imageUrl VARCHAR(512),
-  trendTheme VARCHAR(255) NOT NULL,
-  sentimentScore DECIMAL(5,2),
-  deploymentTxHash VARCHAR(66) NOT NULL,
-  deploymentBlockNumber INT,
-  initialLiquidity DECIMAL(20,8),
-  currentMarketCap DECIMAL(20,8),
-  totalVolume24h DECIMAL(20,8),
-  holders INT,
-  status ENUM('pending', 'deployed', 'active', 'inactive'),
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
+- Uses a named CDP server account on Base.
+- Requires explicit compiled creation bytecode.
+- Appends the ERC-8021 Builder Code suffix.
+- Waits for a successful receipt and contract address.
+- Records receipt-derived gas cost.
+- Does not create or claim a liquidity pool.
 
-#### Trend Analysis Table
-Stores historical trend analysis results for auditing and analytics.
+### `server/agent/baseAttribution.ts`
 
-```sql
-CREATE TABLE trend_analysis (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  theme VARCHAR(255) NOT NULL,
-  sentimentScore DECIMAL(5,2) NOT NULL,
-  mentionCount INT NOT NULL,
-  onChainVolume DECIMAL(20,8),
-  onChainVolumeUSD DECIMAL(20,2),
-  deploymentTriggered BOOLEAN DEFAULT FALSE,
-  deployedTokenId INT,
-  rawData JSON,
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+- Uses `Attribution.toDataSuffix` from `ox/erc8021`, matching Base's official integration guidance.
+- Rejects values that are not `bc_` Builder Codes.
 
-#### Treasury Transactions Table
-Tracks all treasury movements including fees, deployments, and reinvestments.
+### Arc treasury integration
 
-```sql
-CREATE TABLE treasury_transactions (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  type ENUM('fee_collection', 'reinvestment', 'deployment_cost', 'reward'),
-  amount DECIMAL(20,8) NOT NULL,
-  amountUSD DECIMAL(20,2),
-  tokenAddress VARCHAR(42),
-  txHash VARCHAR(66),
-  description TEXT,
-  status ENUM('pending', 'confirmed', 'failed'),
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
+- Read-only network, balance, transfer, and transaction queries live under `server/arc`.
+- `contracts/ArcTreasuryProof.sol` is a noncustodial hash registry; it does not transfer funds.
+- The deployed mainnet address and verification transactions are documented in `docs/ARC_TREASURY.md`.
 
-#### Social Interactions Table
-Records community interactions and agent responses for analytics.
+### ClaimBot
 
-```sql
-CREATE TABLE social_interactions (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  platform ENUM('twitter', 'farcaster') NOT NULL,
-  postId VARCHAR(255) NOT NULL,
-  postContent TEXT,
-  sentiment ENUM('positive', 'neutral', 'negative'),
-  engagementCount INT,
-  mentionedTokenId INT,
-  agentResponse TEXT,
-  responsePostId VARCHAR(255),
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+- `claimbot-x402` rejects fabricated opportunities and reads only records from its configured trusted Arkiv publisher.
+- Unit tests do not count as x402 settlement proof.
 
-### API Endpoints (tRPC)
+## Stored records versus proof
 
-#### Token Management
-- `basepulse.tokens.list` - Get all deployed tokens
-- `basepulse.tokens.getById` - Get specific token details
+The MySQL tables store token, trend, treasury, social, and agent records. A row is not independent proof of an onchain or social event. Public source URLs, transaction hashes, receipts, contract bytecode, and contract state are the verification layer.
 
-#### Trend Analysis
-- `basepulse.trends.recent` - Get recent trend analysis
+The dashboard labels its treasury figure as a recorded ledger net, not a live wallet balance.
 
-#### Treasury
-- `basepulse.treasury.balance` - Get current treasury balance
-- `basepulse.treasury.transactions` - Get transaction history
+## Known incomplete functionality
 
-#### Social
-- `basepulse.social.interactions` - Get community interactions
+- Base liquidity deployment
+- Trading-fee collection
+- Treasury reinvestment
+- Production social-feed configuration
+- Production Base metrics-feed configuration
+- End-to-end proof of an autonomous Base deployment from verified social evidence
+- NEAR Intents execution on `main`
 
-### Dashboard Features
-
-The web dashboard provides real-time monitoring of agent operations:
-
-1. **Deployed Tokens Board** - Lists all deployed tokens with sentiment scores and market data
-2. **Treasury Stats** - Real-time display of available funds and transaction history
-3. **Sentiment Meter** - Visualization of current trends and their sentiment scores
-4. **Community Interactions** - Recent social media posts and agent responses
-5. **Performance Metrics** - Charts and analytics on deployment success rates
-
-## Deployment Configuration
-
-### Environment Variables
-
-```bash
-# Agent Wallet
-AGENT_PRIVATE_KEY=0x...              # Private key for token deployment
-
-# Database
-DATABASE_URL=mysql://...             # MySQL connection string
-
-# LLM
-OPENAI_API_KEY=sk-...                # For trend analysis
-
-# Notifications
-BUILT_IN_FORGE_API_KEY=...           # For owner notifications
-
-# Social Media (Optional for future integration)
-TWITTER_API_KEY=...
-FARCASTER_API_KEY=...
-```
-
-### Autonomous Loop Scheduling
-
-The autonomous loop runs at configurable intervals (default: 15 minutes). To start the loop:
-
-```typescript
-import { scheduleAutonomousLoop } from "./server/agent/autonomousLoop";
-
-const config = {
-  enabled: true,
-  intervalMinutes: 15,
-  minSentimentScore: 60,
-  minMentions: 5,
-  minVolume24hUSD: 100000,
-  maxDeploymentsPerDay: 10,
-};
-
-scheduleAutonomousLoop(config);
-```
-
-## Security Considerations
-
-1. **Private Key Management** - Private keys are stored in environment variables and never exposed in logs or responses
-2. **Rate Limiting** - Maximum deployments per day prevents runaway spending
-3. **Threshold Validation** - Multiple validation checks prevent deployment of low-quality trends
-4. **Error Handling** - All errors are caught and logged with owner notifications
-5. **Transaction Tracking** - All on-chain transactions are tracked and verified
-
-## On-Chain Primitives
-
-### Token Deployment (Clanker SDK)
-- Creates ERC20 tokens with Uniswap V4 liquidity pools
-- Supports custom metadata and social links
-- Implements anti-sniper protection with fee decay
-- Handles vesting and airdrop configurations
-
-### Treasury Management
-- Collects trading fees from deployed tokens
-- Tracks all treasury transactions on-chain
-- Implements reinvestment logic for sustainable growth
-
-### Community Interaction
-- Posts deployment announcements on X/Farcaster
-- Responds to community questions about deployed tokens
-- Tracks sentiment and engagement metrics
-
-## Monitoring & Analytics
-
-The system provides comprehensive monitoring through:
-
-1. **Real-time Dashboard** - Live view of agent operations
-2. **Database Analytics** - Historical trend and deployment data
-3. **Owner Notifications** - Alerts for deployments, errors, and treasury events
-4. **Metrics Tracking** - Performance data on deployment success rates and ROI
-
-## Future Enhancements
-
-1. **Multi-chain Support** - Extend to Ethereum, Arbitrum, and other chains
-2. **Advanced Hedging** - Implement portfolio hedging strategies
-3. **Community Governance** - Allow token holders to vote on deployment parameters
-4. **Yield Farming** - Automatically stake tokens in high-yield protocols
-5. **NFT Integration** - Mint NFTs for milestone achievements
+These items must remain labeled incomplete until backed by real transactions or independently inspectable source evidence.
