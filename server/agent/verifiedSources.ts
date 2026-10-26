@@ -94,6 +94,7 @@ export async function fetchVerifiedSocialPosts(): Promise<
     throw new Error("Social feed returned no posts; refusing to invent input");
   }
 
+  const seenSourceUrls = new Set<string>();
   return records.map((record, index) => {
     if (!record || typeof record !== "object")
       throw new Error(`posts[${index}] is invalid`);
@@ -105,9 +106,16 @@ export async function fetchVerifiedSocialPosts(): Promise<
       String(value.sourceUrl ?? ""),
       `posts[${index}].sourceUrl`
     );
+    const normalizedSourceUrl = sourceUrl.toString();
+    if (seenSourceUrls.has(normalizedSourceUrl)) {
+      throw new Error(
+        `posts[${index}].sourceUrl duplicates an earlier source record`
+      );
+    }
+    seenSourceUrls.add(normalizedSourceUrl);
     return {
       text: value.text.trim(),
-      sourceUrl: sourceUrl.toString(),
+      sourceUrl: normalizedSourceUrl,
       publishedAt: requireRecentTimestamp(
         value.publishedAt,
         MAX_SOCIAL_AGE_MS,

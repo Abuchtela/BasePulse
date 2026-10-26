@@ -9,7 +9,11 @@
 
 import { CdpClient } from "@coinbase/cdp-sdk";
 import { concatHex, encodeDeployData, formatEther } from "viem";
-import { createDeployedToken, createTreasuryTransaction } from "../db";
+import {
+  createDeployedToken,
+  createTreasuryTransaction,
+  updateTreasuryTransactionByTxHash,
+} from "../db";
 import { notifyOwner } from "../_core/notification";
 import { DATA_SUFFIX, BASE_BUILDER_CODE } from "./baseAttribution";
 
@@ -143,6 +147,17 @@ export async function deployToken(
       transaction: { data: deployData },
     });
 
+    // Preserve the submitted hash before receipt polling. The amount remains
+    // null because the actual gas cost is unknowable until a receipt exists.
+    await createTreasuryTransaction({
+      type: "deployment_cost",
+      amount: null,
+      amountUSD: null,
+      txHash: transactionHash,
+      description: `Submitted Base deployment for ${config.symbol}; awaiting receipt`,
+      status: "pending",
+    });
+
     console.log(
       `[TokenDeployer] Deployment tx sent: ${transactionHash}. Waiting for receipt…`
     );
@@ -153,9 +168,17 @@ export async function deployToken(
     });
 
     if (receipt.status !== "success") {
+      await updateTreasuryTransactionByTxHash(transactionHash, {
+        status: "failed",
+        description: `Reverted Base deployment for ${config.symbol}`,
+      });
       throw new Error(`Transaction ${transactionHash} reverted`);
     }
     if (!receipt.contractAddress) {
+      await updateTreasuryTransactionByTxHash(transactionHash, {
+        status: "failed",
+        description: `Base deployment for ${config.symbol} produced no contract address`,
+      });
       throw new Error(
         `Transaction ${transactionHash} did not produce a contract address`
       );
@@ -185,11 +208,9 @@ export async function deployToken(
     // Record the actual receipt-derived gas cost. This does not claim that
     // liquidity was seeded or that a paymaster sponsored the transaction.
     const gasCostWei = receipt.gasUsed * receipt.effectiveGasPrice;
-    await createTreasuryTransaction({
-      type: "deployment_cost",
+    await updateTreasuryTransactionByTxHash(transactionHash, {
       amount: formatEther(gasCostWei) as any,
       amountUSD: null,
-      txHash: transactionHash,
       description: `Confirmed Base deployment gas for ${config.symbol}`,
       status: "confirmed",
       tokenAddress,

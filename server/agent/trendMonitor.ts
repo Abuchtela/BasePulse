@@ -103,11 +103,14 @@ Focus on themes related to Base, DeFi, tokens, and blockchain innovation.`,
       ) {
         throw new Error("LLM returned invalid supporting post indexes");
       }
+      const sourceUrls = [
+        ...new Set(indexes.map(index => posts[index].sourceUrl)),
+      ];
       return {
         theme: String(trend.theme),
-        mentions: indexes.map(index => posts[index].sourceUrl),
+        mentions: sourceUrls,
         sentimentScore: Number(trend.sentimentScore),
-        mentionCount: indexes.length,
+        mentionCount: sourceUrls.length,
       };
     });
   } catch (error) {
