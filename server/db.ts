@@ -1,7 +1,20 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, deployedTokens, trendAnalysis, treasuryTransactions, socialInteractions, agentMetrics, InsertDeployedToken, InsertTrendAnalysis, InsertTreasuryTransaction, InsertSocialInteraction, InsertAgentMetric } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import {
+  InsertUser,
+  users,
+  deployedTokens,
+  trendAnalysis,
+  treasuryTransactions,
+  socialInteractions,
+  agentMetrics,
+  InsertDeployedToken,
+  InsertTrendAnalysis,
+  InsertTreasuryTransaction,
+  InsertSocialInteraction,
+  InsertAgentMetric,
+} from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -56,8 +69,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -84,7 +97,11 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -96,13 +113,21 @@ export async function getUserByOpenId(openId: string) {
 export async function getDeployedTokens(limit = 50) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(deployedTokens).orderBy(desc(deployedTokens.createdAt)).limit(limit);
+  return db
+    .select()
+    .from(deployedTokens)
+    .orderBy(desc(deployedTokens.createdAt))
+    .limit(limit);
 }
 
 export async function getDeployedTokenById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(deployedTokens).where(eq(deployedTokens.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(deployedTokens)
+    .where(eq(deployedTokens.id, id))
+    .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -115,7 +140,11 @@ export async function createDeployedToken(token: InsertDeployedToken) {
 export async function getTrendAnalysis(limit = 50) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(trendAnalysis).orderBy(desc(trendAnalysis.createdAt)).limit(limit);
+  return db
+    .select()
+    .from(trendAnalysis)
+    .orderBy(desc(trendAnalysis.createdAt))
+    .limit(limit);
 }
 
 export async function createTrendAnalysis(trend: InsertTrendAnalysis) {
@@ -127,11 +156,15 @@ export async function createTrendAnalysis(trend: InsertTrendAnalysis) {
 export async function getTreasuryBalance() {
   const db = await getDb();
   if (!db) return "0";
-  // Sum all treasury transactions
+  // This is a database ledger total, not a live wallet balance. Only confirmed
+  // transactions with parseable amounts are allowed to affect it.
   const result = await db.select().from(treasuryTransactions);
   let balance = 0;
-  result.forEach((tx) => {
+  result.forEach(tx => {
+    if (tx.status !== "confirmed") return;
+    if (tx.amount === null) return;
     const amount = parseFloat(tx.amount.toString());
+    if (!Number.isFinite(amount)) return;
     if (tx.type === "fee_collection" || tx.type === "reward") {
       balance += amount;
     } else if (tx.type === "deployment_cost" || tx.type === "reinvestment") {
@@ -149,7 +182,13 @@ export async function createTreasuryTransaction(tx: InsertTreasuryTransaction) {
 
 export async function updateTreasuryTransactionByTxHash(
   txHash: string,
-  updates: { status: "confirmed" | "failed"; tokenAddress?: string }
+  updates: {
+    status: "confirmed" | "failed";
+    amount?: string | null;
+    amountUSD?: string | null;
+    tokenAddress?: string;
+    description?: string;
+  }
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -162,10 +201,16 @@ export async function updateTreasuryTransactionByTxHash(
 export async function getSocialInteractions(limit = 100) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(socialInteractions).orderBy(desc(socialInteractions.createdAt)).limit(limit);
+  return db
+    .select()
+    .from(socialInteractions)
+    .orderBy(desc(socialInteractions.createdAt))
+    .limit(limit);
 }
 
-export async function createSocialInteraction(interaction: InsertSocialInteraction) {
+export async function createSocialInteraction(
+  interaction: InsertSocialInteraction
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.insert(socialInteractions).values(interaction);

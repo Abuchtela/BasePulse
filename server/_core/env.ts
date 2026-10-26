@@ -10,4 +10,11 @@ export const ENV = {
   // Base Developer Platform
   baseApiKey: process.env.BASE_API_KEY ?? "",
   baseBuilderCode: process.env.BASE_BUILDER_CODE ?? "",
+  // Verified external inputs for the autonomous loop. The loop fails closed
+  // when either source is absent, stale, malformed, or non-HTTPS.
+  socialFeedUrl: process.env.BASEPULSE_SOCIAL_FEED_URL ?? "",
+  socialFeedBearerToken: process.env.BASEPULSE_SOCIAL_FEED_BEARER_TOKEN ?? "",
+  onchainMetricsUrl: process.env.BASEPULSE_ONCHAIN_METRICS_URL ?? "",
+  onchainMetricsBearerToken:
+    process.env.BASEPULSE_ONCHAIN_METRICS_BEARER_TOKEN ?? "",
 };

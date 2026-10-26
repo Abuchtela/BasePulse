@@ -1,4 +1,14 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, boolean, json } from "drizzle-orm/mysql-core";
+import {
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+  decimal,
+  boolean,
+  json,
+} from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -43,7 +53,9 @@ export const deployedTokens = mysqlTable("deployed_tokens", {
   currentMarketCap: decimal("currentMarketCap", { precision: 20, scale: 8 }),
   totalVolume24h: decimal("totalVolume24h", { precision: 20, scale: 8 }),
   holders: int("holders"),
-  status: mysqlEnum("status", ["pending", "deployed", "active", "inactive"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "deployed", "active", "inactive"])
+    .default("pending")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -57,7 +69,10 @@ export type InsertDeployedToken = typeof deployedTokens.$inferInsert;
 export const trendAnalysis = mysqlTable("trend_analysis", {
   id: int("id").autoincrement().primaryKey(),
   theme: varchar("theme", { length: 255 }).notNull(),
-  sentimentScore: decimal("sentimentScore", { precision: 5, scale: 2 }).notNull(),
+  sentimentScore: decimal("sentimentScore", {
+    precision: 5,
+    scale: 2,
+  }).notNull(),
   mentionCount: int("mentionCount").notNull(),
   onChainVolume: decimal("onChainVolume", { precision: 20, scale: 8 }),
   onChainVolumeUSD: decimal("onChainVolumeUSD", { precision: 20, scale: 2 }),
@@ -75,19 +90,31 @@ export type InsertTrendAnalysis = typeof trendAnalysis.$inferInsert;
  */
 export const treasuryTransactions = mysqlTable("treasury_transactions", {
   id: int("id").autoincrement().primaryKey(),
-  type: mysqlEnum("type", ["fee_collection", "reinvestment", "deployment_cost", "reward"]).notNull(),
-  amount: decimal("amount", { precision: 20, scale: 8 }).notNull(),
+  type: mysqlEnum("type", [
+    "fee_collection",
+    "reinvestment",
+    "deployment_cost",
+    "reward",
+  ]).notNull(),
+  // Null while a submitted transaction is awaiting its receipt. Never use a
+  // fabricated zero as a stand-in for an unknown onchain cost.
+  // Preserve the full 18-decimal precision returned by formatEther so a small,
+  // real transaction fee cannot be rounded down to a fabricated zero.
+  amount: decimal("amount", { precision: 38, scale: 18 }),
   amountUSD: decimal("amountUSD", { precision: 20, scale: 2 }),
   tokenAddress: varchar("tokenAddress", { length: 42 }),
   txHash: varchar("txHash", { length: 66 }),
   description: text("description"),
-  status: mysqlEnum("status", ["pending", "confirmed", "failed"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "confirmed", "failed"])
+    .default("pending")
+    .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type TreasuryTransaction = typeof treasuryTransactions.$inferSelect;
-export type InsertTreasuryTransaction = typeof treasuryTransactions.$inferInsert;
+export type InsertTreasuryTransaction =
+  typeof treasuryTransactions.$inferInsert;
 
 /**
  * Durable NEAR Intents audit records. The idempotency key is unique so a
@@ -97,9 +124,20 @@ export const nearIntentExecutions = mysqlTable("near_intent_executions", {
   id: int("id").autoincrement().primaryKey(),
   idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull().unique(),
   intentHash: varchar("intentHash", { length: 71 }).notNull(),
-  status: mysqlEnum("status", ["rejected", "quoted", "deposit_submitted", "processing", "success", "refunded", "failed"]).notNull(),
+  status: mysqlEnum("status", [
+    "rejected",
+    "quoted",
+    "deposit_submitted",
+    "processing",
+    "success",
+    "refunded",
+    "failed",
+  ]).notNull(),
   executionMode: mysqlEnum("executionMode", ["simulation", "live"]).notNull(),
-  estimatedAmountUSD: decimal("estimatedAmountUSD", { precision: 20, scale: 2 }).notNull(),
+  estimatedAmountUSD: decimal("estimatedAmountUSD", {
+    precision: 20,
+    scale: 2,
+  }).notNull(),
   intent: json("intent").notNull(),
   quote: json("quote"),
   receipt: json("receipt").notNull(),
@@ -108,7 +146,8 @@ export const nearIntentExecutions = mysqlTable("near_intent_executions", {
 });
 
 export type NearIntentExecution = typeof nearIntentExecutions.$inferSelect;
-export type InsertNearIntentExecution = typeof nearIntentExecutions.$inferInsert;
+export type InsertNearIntentExecution =
+  typeof nearIntentExecutions.$inferInsert;
 
 /**
  * Social interactions and community engagement

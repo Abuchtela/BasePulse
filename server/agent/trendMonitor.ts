@@ -5,26 +5,32 @@
 
 import { invokeLLM } from "../_core/llm";
 import { createTrendAnalysis } from "../db";
+import type {
+  VerifiedOnChainMetrics,
+  VerifiedSocialPost,
+} from "./verifiedSources";
 
 interface TrendData {
   theme: string;
   mentions: string[];
+  supportingPosts: VerifiedSocialPost[];
   sentimentScore: number;
   mentionCount: number;
-}
-
-interface OnChainMetrics {
-  volume24h: number;
-  volumeUSD24h: number;
-  activeAddresses: number;
-  transactionCount: number;
 }
 
 /**
  * Analyze social media posts using LLM to extract trends and sentiment
  */
-export async function analyzeSocialTrends(posts: string[]): Promise<TrendData[]> {
-  const postsText = posts.join("\n---\n");
+export async function analyzeSocialTrends(
+  posts: VerifiedSocialPost[]
+): Promise<TrendData[]> {
+  if (posts.length === 0) throw new Error("Verified social posts are required");
+  const postsText = posts
+    .map(
+      (post, index) =>
+        `[${index}] ${post.publishedAt} ${post.sourceUrl}\n${post.text}`
+    )
+    .join("\n---\n");
 
   const response = await invokeLLM({
     messages: [
@@ -33,9 +39,10 @@ export async function analyzeSocialTrends(posts: string[]): Promise<TrendData[]>
         content: `You are a trend analysis expert for the Base blockchain ecosystem. Analyze the following social media posts and extract:
 1. Main themes/topics being discussed
 2. Sentiment score (0-100, where 100 is most positive)
-3. Number of mentions for each theme
+3. The zero-based indexes of posts that directly support each theme
 
-Return a JSON array with objects containing: theme, sentimentScore (0-100), mentionCount.
+Return objects containing: theme, sentimentScore (0-100), supportingPostIndexes.
+Do not invent posts, counts, URLs, or evidence. Omit a theme unless at least one supplied post supports it.
 Focus on themes related to Base, DeFi, tokens, and blockchain innovation.`,
       },
       {
@@ -58,9 +65,14 @@ Focus on themes related to Base, DeFi, tokens, and blockchain innovation.`,
                 properties: {
                   theme: { type: "string" },
                   sentimentScore: { type: "number", minimum: 0, maximum: 100 },
-                  mentionCount: { type: "integer", minimum: 1 },
+                  supportingPostIndexes: {
+                    type: "array",
+                    minItems: 1,
+                    uniqueItems: true,
+                    items: { type: "integer", minimum: 0 },
+                  },
                 },
-                required: ["theme", "sentimentScore", "mentionCount"],
+                required: ["theme", "sentimentScore", "supportingPostIndexes"],
               },
             },
           },
@@ -74,17 +86,39 @@ Focus on themes related to Base, DeFi, tokens, and blockchain innovation.`,
     const content = response.choices[0]?.message.content;
     if (!content) return [];
 
-    const contentStr = typeof content === "string" ? content : JSON.stringify(content);
+    const contentStr =
+      typeof content === "string" ? content : JSON.stringify(content);
     const parsed = JSON.parse(contentStr);
-    return parsed.trends.map((trend: any) => ({
-      theme: trend.theme,
-      mentions: [],
-      sentimentScore: trend.sentimentScore,
-      mentionCount: trend.mentionCount,
-    }));
+    if (!Array.isArray(parsed.trends))
+      throw new Error("LLM trend response is not an array");
+    return parsed.trends.map((trend: any) => {
+      const indexes = Array.isArray(trend.supportingPostIndexes)
+        ? [...new Set<number>(trend.supportingPostIndexes)]
+        : [];
+      if (
+        !indexes.length ||
+        indexes.some(
+          index =>
+            !Number.isInteger(index) || index < 0 || index >= posts.length
+        )
+      ) {
+        throw new Error("LLM returned invalid supporting post indexes");
+      }
+      const sourceUrls = [
+        ...new Set(indexes.map(index => posts[index].sourceUrl)),
+      ];
+      const supportingPosts = indexes.map(index => posts[index]);
+      return {
+        theme: String(trend.theme),
+        mentions: sourceUrls,
+        supportingPosts,
+        sentimentScore: Number(trend.sentimentScore),
+        mentionCount: sourceUrls.length,
+      };
+    });
   } catch (error) {
     console.error("Error parsing LLM response:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -94,7 +128,7 @@ Focus on themes related to Base, DeFi, tokens, and blockchain innovation.`,
  */
 export function validateTrendThreshold(
   trend: TrendData,
-  onChainMetrics: OnChainMetrics,
+  onChainMetrics: VerifiedOnChainMetrics,
   config: {
     minSentimentScore: number;
     minMentions: number;
@@ -113,7 +147,7 @@ export function validateTrendThreshold(
  */
 export async function storeTrendAnalysis(
   trend: TrendData,
-  onChainMetrics: OnChainMetrics,
+  onChainMetrics: VerifiedOnChainMetrics,
   deploymentTriggered: boolean,
   deployedTokenId?: number
 ): Promise<void> {
@@ -127,6 +161,9 @@ export async function storeTrendAnalysis(
     deployedTokenId,
     rawData: {
       mentions: trend.mentions,
+      metricsSourceUrl: onChainMetrics.sourceUrl,
+      metricsObservedAt: onChainMetrics.observedAt,
+      chainId: onChainMetrics.chainId,
     } as any,
   });
 }
@@ -139,7 +176,7 @@ export function generateTokenMetadata(theme: string, sentiment: number) {
   const trendName = theme
     .split(" ")
     .slice(0, 2)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join("");
 
   return {
