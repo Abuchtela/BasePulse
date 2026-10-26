@@ -13,6 +13,7 @@ import type {
 interface TrendData {
   theme: string;
   mentions: string[];
+  supportingPosts: VerifiedSocialPost[];
   sentimentScore: number;
   mentionCount: number;
 }
@@ -106,9 +107,11 @@ Focus on themes related to Base, DeFi, tokens, and blockchain innovation.`,
       const sourceUrls = [
         ...new Set(indexes.map(index => posts[index].sourceUrl)),
       ];
+      const supportingPosts = indexes.map(index => posts[index]);
       return {
         theme: String(trend.theme),
         mentions: sourceUrls,
+        supportingPosts,
         sentimentScore: Number(trend.sentimentScore),
         mentionCount: sourceUrls.length,
       };

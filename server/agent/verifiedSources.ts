@@ -21,6 +21,19 @@ export type VerifiedOnChainMetrics = {
   sourceUrl: string;
 };
 
+export function assertRecentSocialEvidence(posts: VerifiedSocialPost[]): void {
+  if (posts.length === 0) {
+    throw new Error("At least one supporting social post is required");
+  }
+  posts.forEach((post, index) => {
+    requireRecentTimestamp(
+      post.publishedAt,
+      MAX_SOCIAL_AGE_MS,
+      `supportingPosts[${index}].publishedAt`
+    );
+  });
+}
+
 function requireHttpsUrl(value: string, label: string): URL {
   if (!value) throw new Error(`${label} is not configured`);
   const url = new URL(value);

@@ -12,6 +12,7 @@ import {
 import { deployToken } from "./tokenDeployer";
 import { getTreasuryBalance, createAgentMetric } from "../db";
 import {
+  assertRecentSocialEvidence,
   fetchVerifiedOnChainMetrics,
   fetchVerifiedSocialPosts,
 } from "./verifiedSources";
@@ -63,6 +64,20 @@ export async function runAutonomousLoop(
       // Fetch immediately before evaluating each trend. A prior trend's deployment
       // can take long enough for an earlier metrics observation to become stale.
       const onChainMetrics = await fetchVerifiedOnChainMetrics();
+
+      try {
+        // Recheck the exact posts cited by this trend. LLM analysis or an earlier
+        // deployment may have taken long enough for evidence to cross the limit.
+        assertRecentSocialEvidence(trend.supportingPosts);
+      } catch (error) {
+        console.warn(
+          `[AutonomousLoop] Rejecting trend "${trend.theme}" because its cited social evidence is no longer fresh:`,
+          error
+        );
+        await storeTrendAnalysis(trend, onChainMetrics, false);
+        continue;
+      }
+
       const isValid = validateTrendThreshold(trend, onChainMetrics, {
         minSentimentScore: config.minSentimentScore,
         minMentions: config.minMentions,
