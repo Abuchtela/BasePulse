@@ -62,6 +62,10 @@ async function fetchJson(
       headers: bearerToken
         ? { authorization: `Bearer ${bearerToken}` }
         : undefined,
+      // Do not allow a configured HTTPS evidence endpoint to redirect to HTTP.
+      // Rejecting every redirect also keeps the authenticated request bound to
+      // the explicitly configured origin.
+      redirect: "error",
       signal: controller.signal,
     });
     if (!response.ok)

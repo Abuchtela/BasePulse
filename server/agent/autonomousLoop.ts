@@ -57,10 +57,12 @@ export async function runAutonomousLoop(
     console.log("[AutonomousLoop] Analyzing social trends...");
     const trends = await analyzeSocialTrends(posts);
     console.log(`[AutonomousLoop] Found ${trends.length} potential trends`);
-    const onChainMetrics = await fetchVerifiedOnChainMetrics();
 
     // Step 3: For each trend, validate against on-chain metrics and potentially deploy
     for (const trend of trends) {
+      // Fetch immediately before evaluating each trend. A prior trend's deployment
+      // can take long enough for an earlier metrics observation to become stale.
+      const onChainMetrics = await fetchVerifiedOnChainMetrics();
       const isValid = validateTrendThreshold(trend, onChainMetrics, {
         minSentimentScore: config.minSentimentScore,
         minMentions: config.minMentions,

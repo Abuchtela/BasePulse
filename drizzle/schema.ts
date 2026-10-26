@@ -98,7 +98,9 @@ export const treasuryTransactions = mysqlTable("treasury_transactions", {
   ]).notNull(),
   // Null while a submitted transaction is awaiting its receipt. Never use a
   // fabricated zero as a stand-in for an unknown onchain cost.
-  amount: decimal("amount", { precision: 20, scale: 8 }),
+  // Preserve the full 18-decimal precision returned by formatEther so a small,
+  // real transaction fee cannot be rounded down to a fabricated zero.
+  amount: decimal("amount", { precision: 38, scale: 18 }),
   amountUSD: decimal("amountUSD", { precision: 20, scale: 2 }),
   tokenAddress: varchar("tokenAddress", { length: 42 }),
   txHash: varchar("txHash", { length: 66 }),

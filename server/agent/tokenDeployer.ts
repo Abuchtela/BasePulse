@@ -205,13 +205,30 @@ export async function deployToken(
       status: "deployed",
     });
 
-    // Record the actual receipt-derived gas cost. This does not claim that
-    // liquidity was seeded or that a paymaster sponsored the transaction.
-    const gasCostWei = receipt.gasUsed * receipt.effectiveGasPrice;
+    // CDP resolves the named `base` network through viem's Base chain
+    // formatter. The runtime receipt therefore contains Base's confirmed L1
+    // data fee in addition to the L2 execution gas fields, even though CDP's
+    // public return type exposes only the common EVM receipt fields.
+    const baseReceipt = receipt as typeof receipt & { l1Fee: bigint | null };
+    if (baseReceipt.l1Fee === null || baseReceipt.l1Fee === undefined) {
+      await updateTreasuryTransactionByTxHash(transactionHash, {
+        status: "failed",
+        description: `Confirmed Base deployment for ${config.symbol}, but its L1 data fee was absent from the receipt`,
+        tokenAddress,
+      });
+      throw new Error(
+        `Transaction ${transactionHash} receipt did not include the Base L1 data fee`
+      );
+    }
+
+    // Record the complete confirmed Base transaction fee: L2 execution gas
+    // plus the L1 data fee. This is receipt data, not an estimate.
+    const gasCostWei =
+      receipt.gasUsed * receipt.effectiveGasPrice + baseReceipt.l1Fee;
     await updateTreasuryTransactionByTxHash(transactionHash, {
       amount: formatEther(gasCostWei) as any,
       amountUSD: null,
-      description: `Confirmed Base deployment gas for ${config.symbol}`,
+      description: `Confirmed Base deployment fee for ${config.symbol} (L2 execution gas plus L1 data fee)`,
       status: "confirmed",
       tokenAddress,
     });
