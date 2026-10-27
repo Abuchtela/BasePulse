@@ -1,105 +1,100 @@
 # BasePulse
 
-BasePulse is an evidence-first Base agent project. Its repository contains a Base token-deployment path, a fail-closed trend-analysis loop, an Arc mainnet proof registry and read-only treasury tools, a Base Registry browser, and ClaimBot payment/data components.
+BasePulse is a TypeScript web application and evidence-first agent project for Base. It combines an authenticated dashboard and Base Registry browser with components for verified trend analysis, Base token deployment, Arc treasury proofs, and ClaimBot.
 
-## Verified status
+The project is intentionally explicit about what is implemented and what remains incomplete. It does not substitute generated data or simulated transactions for external evidence.
 
-| Capability                         | Current status                                                                                  | Evidence requirement                                                              |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Base ERC-20 deployment through CDP | Implemented code path; requires credentials, compiled bytecode, funds, and a successful receipt | Transaction hash, successful Base receipt, and contract address                   |
-| Social trend ingestion             | Requires a configured HTTPS feed; no generated fallback                                         | Each post must include an HTTPS source URL and a timestamp less than 24 hours old |
-| Base onchain metrics               | Requires a configured HTTPS metrics source; no generated fallback                               | Chain ID 8453, observation less than 15 minutes old, and an HTTPS evidence URL    |
-| Trend analysis                     | Implemented with source-index validation                                                        | Every returned trend must cite supplied post indexes                              |
-| Liquidity deployment               | **Not implemented**                                                                             | No claim until a real transaction and pool address exist                          |
-| Fee collection                     | **Not implemented**                                                                             | No claim until a real collection transaction exists                               |
-| Treasury reinvestment              | **Not implemented**                                                                             | No claim until a real transfer/swap transaction exists                            |
-| Arc proof registry                 | Deployed and independently verified on Arc mainnet                                              | See [Arc treasury evidence](docs/ARC_TREASURY.md)                                 |
-| NEAR Intents                       | Submission planning exists; implementation is not on `main`                                     | See [NEAR submission brief](docs/NEAR_HACKATHON_SUBMISSION.md)                    |
+## What is included
 
-The dashboard displays stored database records. Its recorded treasury net is **not** represented as a live wallet balance.
+| Area | Current status |
+| --- | --- |
+| Trend analysis | Uses supplied social posts and requires returned trends to cite their source-post indexes. |
+| Autonomous Base agent | Disabled by default. When enabled, requires configured live HTTPS social and Base metrics sources; stale or invalid evidence stops an iteration. |
+| Base token deployment | CDP deployment path requires credentials and real compiled ERC-20 creation bytecode. Success is recorded only after a successful Base receipt returns a contract address. |
+| Liquidity, fee collection, reinvestment | Not implemented. Base token deployment does not create a liquidity pool. |
+| Base Registry browser | Included in the web application. Authenticated registry requests can use `BASE_API_KEY`. |
+| Arc treasury | Includes read-only Arc queries and a separate wallet-approved proof registry. The registry records hashes; it does not hold or transfer funds. See [Arc treasury documentation](docs/ARC_TREASURY.md). |
+| ClaimBot | Payment and data components are documented in [claimbot-x402](claimbot-x402/README.md). |
+| NEAR Intents | Submission planning exists; execution is not implemented on `main`. See the [NEAR submission brief](docs/NEAR_HACKATHON_SUBMISSION.md). |
 
-## Non-fabrication rule
+The dashboard displays stored database records. Its treasury net is a recorded ledger value, not a live wallet balance or independent proof of an onchain event.
 
-- No generated posts, random market values, fabricated opportunities, pretend transactions, or success responses.
-- Missing credentials or evidence stop the relevant operation.
-- A deployment is successful only after a successful onchain receipt returns a contract address.
-- Unimplemented functionality is labeled unimplemented instead of being replaced by simulation.
+## How the agent works
 
-## Autonomous-loop configuration
+When explicitly enabled, the autonomous loop follows this evidence-gated flow:
 
-The loop is off unless `BASEPULSE_AGENT_ENABLED=true`. When enabled, it also requires:
+1. Fetch recent posts from a configured HTTPS social feed.
+2. Fetch Base onchain metrics from a configured HTTPS source.
+3. Analyze only the supplied posts and require trends to cite the supporting post indexes.
+4. Apply configured sentiment, mention, volume, and daily deployment limits.
+5. If a deployment is triggered, submit it through CDP and record it only after confirmation.
 
-```bash
-BASEPULSE_SOCIAL_FEED_URL=https://your-source.example/posts
-BASEPULSE_SOCIAL_FEED_BEARER_TOKEN=
-BASEPULSE_ONCHAIN_METRICS_URL=https://your-source.example/base-metrics
-BASEPULSE_ONCHAIN_METRICS_BEARER_TOKEN=
-```
+The loop rejects social posts older than 24 hours and metrics not observed within 15 minutes. Metrics must identify Base with chain ID `8453` and include an HTTPS evidence URL. Missing, stale, malformed, or unsupported inputs fail closed; there is no generated-data fallback.
 
-Social response:
+## Requirements
 
-```json
-{
-  "posts": [
-    {
-      "text": "Original post text",
-      "sourceUrl": "https://public-source.example/post/123",
-      "publishedAt": "2026-10-23T20:00:00.000Z"
-    }
-  ]
-}
-```
+- Node.js 22 or newer
+- pnpm
+- MySQL, if using database-backed application features
 
-Metrics response:
+## Local setup
 
-```json
-{
-  "chainId": 8453,
-  "volume24h": 0,
-  "volumeUSD24h": 0,
-  "activeAddresses": 0,
-  "transactionCount": 0,
-  "observedAt": "2026-10-23T20:00:00.000Z",
-  "sourceUrl": "https://public-source.example/evidence"
-}
-```
-
-The numeric values above document the response shape only. BasePulse does not ship them as runtime data.
-
-## Base deployment requirements
-
-```bash
-CDP_API_KEY_NAME=
-CDP_API_KEY_PRIVATE_KEY=
-ERC20_DEPLOY_BYTECODE=
-BASE_BUILDER_CODE=bc_hi2cipof
-```
-
-`ERC20_DEPLOY_BYTECODE` must be real compiled creation bytecode for a contract whose constructor is `(string name, string symbol)`. Builder attribution is encoded with the official `ox/erc8021` implementation.
-
-The deployer does not claim to create liquidity. It records the receipt-derived gas cost after confirmation.
-
-## Run and verify
+From the repository root:
 
 ```bash
 pnpm install
-pnpm test
-pnpm check
+cp .env.example .env
+```
+
+Set `DATABASE_URL` in `.env` for database-backed features. To create and apply the database migrations, run:
+
+```bash
+pnpm db:push
+```
+
+Start the application:
+
+```bash
 pnpm dev
 ```
 
-Arc deployment verification is handled separately by `.github/workflows/arc-verify-deploy.yml` and `scripts/verify-arc-deployment.mjs`.
+The server uses port `3000` by default and looks for the next available port if that one is busy. Open `http://localhost:3000/`; the dashboard is at `/dashboard` and may require authentication.
 
-## Evidence documents
+## Configuration
 
+The complete variable list and safe defaults are in [`.env.example`](.env.example). Important settings include:
+
+- `DATABASE_URL` — MySQL connection string for database-backed features.
+- `CDP_API_KEY_NAME`, `CDP_API_KEY_PRIVATE_KEY`, and `ERC20_DEPLOY_BYTECODE` — required for Base token deployment. The bytecode must be real compiled creation bytecode for a contract whose constructor is `(string name, string symbol)`.
+- `BASE_BUILDER_CODE` — ERC-8021 Builder Code used for Base transaction attribution.
+- `BASEPULSE_AGENT_ENABLED` — set to `true` only when deliberately enabling the autonomous loop. It is disabled otherwise.
+- `BASEPULSE_SOCIAL_FEED_URL` and `BASEPULSE_ONCHAIN_METRICS_URL` — HTTPS evidence sources required when the loop is enabled. Optional bearer-token variables are also available.
+- `BASE_API_KEY` — optional credential for authenticated Base Registry API requests.
+
+The loop's thresholds and interval can be set with `BASEPULSE_AGENT_INTERVAL_MINUTES`, `BASEPULSE_MIN_SENTIMENT_SCORE`, `BASEPULSE_MIN_MENTIONS`, `BASEPULSE_MIN_VOLUME_24H_USD`, and `BASEPULSE_MAX_DEPLOYMENTS_PER_DAY`. Deployment requires funded execution credentials; review bytecode and transaction parameters before enabling it.
+
+## Development commands
+
+```bash
+pnpm dev       # Start the development server
+pnpm test      # Run the test suite
+pnpm check     # Type-check the project
+pnpm build     # Build the client and server
+pnpm start     # Run the production server after building
+```
+
+## Project documentation
+
+- [Verified agent architecture and known limitations](AGENT_ARCHITECTURE.md)
 - [Arc treasury integration and mainnet proof](docs/ARC_TREASURY.md)
 - [Arc microgrant submission facts](docs/ARC_MICROGRANTS_SUBMISSION.md)
 - [NEAR submission brief and incomplete-work disclosure](docs/NEAR_HACKATHON_SUBMISSION.md)
+- [NEAR Intents integration notes](docs/NEAR_INTENTS_INTEGRATION.md)
 - [ClaimBot x402 evidence policy](claimbot-x402/README.md)
 
-## Security
+## Security and verification
 
 - Never commit wallet keys, API secrets, session cookies, or seed phrases.
-- Keep the autonomous loop disabled until verified sources, spending policy, and funded execution credentials are deliberately configured.
-- Treat database rows as records, not proof; use public receipts and contract state for onchain claims.
-- Review token bytecode and transaction parameters before enabling mainnet execution.
+- Keep the autonomous loop disabled until its evidence sources, spending policy, and funded execution credentials have been reviewed.
+- Treat database rows as records, not proof. Verify onchain claims with public receipts and contract state.
+- Do not describe liquidity deployment, fee collection, or treasury reinvestment as available until backed by real implementations and evidence.
