@@ -14,6 +14,6 @@ assert.equal(httpsSource("https://www.builder.io/hackathon/rules"), "https://www
 assert.equal(analysisSchema.safeParse({}).success, false);
 assertSourceSupport(quotation, analysis);
 assert.throws(() => assertSourceSupport(otherQuotation, analysis));
-await assert.rejects(() => list.run({}, { caller: "cli" }),
+await assert.rejects(async () => await list.run({}, { caller: "cli" }),
   (error: { errorCode?: string }) => error.errorCode === "unauthenticated");
 console.log("PASS: real-source quote matching, unsupported-quote rejection, input shape, HTTPS URL, and signed-out access. No DB records or AI outputs created.");
