@@ -24,7 +24,7 @@ import { useIsMobile } from "@/hooks/useMobile";
 import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 const menuItems = [
@@ -46,6 +46,7 @@ export default function DashboardLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
+  const loginUrl = getLoginUrl();
   const { loading, user } = useAuth();
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
@@ -65,12 +66,20 @@ export default function DashboardLayout({
               Sign in to continue
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
+              {loginUrl
+                ? "Access to this dashboard requires authentication. Continue to launch the login flow."
+                : "Sign-in is unavailable because OAuth is not configured."}
             </p>
           </div>
           <Button
+            disabled={!loginUrl}
+            title={
+              !loginUrl
+                ? "Sign-in is unavailable: OAuth is not configured."
+                : undefined
+            }
             onClick={() => {
-              window.location.href = getLoginUrl();
+              if (loginUrl) window.location.href = loginUrl;
             }}
             size="lg"
             className="w-full shadow-lg hover:shadow-xl transition-all"
