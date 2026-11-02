@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { TrendingUp, Zap, BarChart3, Shield } from "lucide-react";
 
 export default function Home() {
+  const loginUrl = getLoginUrl();
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
 
@@ -46,12 +47,18 @@ export default function Home() {
               </>
             ) : (
               <Button
+                disabled={!loginUrl}
+                title={
+                  !loginUrl
+                    ? "Sign-in is unavailable: OAuth is not configured."
+                    : undefined
+                }
                 onClick={() => {
-                  window.location.href = getLoginUrl();
+                  if (loginUrl) window.location.href = loginUrl;
                 }}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                Login
+                {loginUrl ? "Login" : "Sign-in unavailable"}
               </Button>
             )}
           </div>
@@ -72,13 +79,19 @@ export default function Home() {
           </p>
           {!isAuthenticated && (
             <Button
+              disabled={!loginUrl}
+              title={
+                !loginUrl
+                  ? "Sign-in is unavailable: OAuth is not configured."
+                  : undefined
+              }
               onClick={() => {
-                window.location.href = getLoginUrl();
+                if (loginUrl) window.location.href = loginUrl;
               }}
               size="lg"
               className="bg-blue-600 hover:bg-blue-700 text-lg px-8"
             >
-              Get Started
+              {loginUrl ? "Get Started" : "Sign-in unavailable"}
             </Button>
           )}
         </div>
