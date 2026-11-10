@@ -1,0 +1,25 @@
+name: ClaimBot Agent-Native checks
+on:
+  pull_request:
+    paths: ['claimbot-agent-native/**', '.github/workflows/claimbot-agent-native.yml']
+  push:
+    branches: [main]
+    paths: ['claimbot-agent-native/**', '.github/workflows/claimbot-agent-native.yml']
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: claimbot-agent-native
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install -g pnpm@11.25.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm agent-native:doctor
+      - run: pnpm exec tsx scripts/check-review-contract.ts
