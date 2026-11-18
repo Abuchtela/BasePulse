@@ -6,15 +6,17 @@ BasePulse is an evidence-first Base agent project. Its repository contains a Bas
 
 | Capability                         | Current status                                                                                  | Evidence requirement                                                              |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Base ERC-20 deployment through CDP | Implemented code path; requires credentials, compiled bytecode, funds, and a successful receipt | Transaction hash, successful Base receipt, and contract address                   |
-| Social trend ingestion             | Requires a configured HTTPS feed; no generated fallback                                         | Each post must include an HTTPS source URL and a timestamp less than 24 hours old |
-| Base onchain metrics               | Requires a configured HTTPS metrics source; no generated fallback                               | Chain ID 8453, observation less than 15 minutes old, and an HTTPS evidence URL    |
+| Base ERC-20 deployment through CDP | Code path implemented; no public Base deployment evidence is linked here                        | Successful Base receipt, transaction hash, and contract address                   |
+| Social trend ingestion             | Requires a configured HTTPS feed; production source is not evidenced here                       | Public source URL and a timestamp less than 24 hours old                           |
+| Base onchain metrics               | Requires a configured HTTPS metrics source; production source is not evidenced here              | Chain ID 8453, observation less than 15 minutes old, and an HTTPS evidence URL    |
 | Trend analysis                     | Implemented with source-index validation                                                        | Every returned trend must cite supplied post indexes                              |
 | Liquidity deployment               | **Not implemented**                                                                             | No claim until a real transaction and pool address exist                          |
 | Fee collection                     | **Not implemented**                                                                             | No claim until a real collection transaction exists                               |
 | Treasury reinvestment              | **Not implemented**                                                                             | No claim until a real transfer/swap transaction exists                            |
 | Arc proof registry                 | Deployed and independently verified on Arc mainnet                                              | See [Arc treasury evidence](docs/ARC_TREASURY.md)                                 |
-| NEAR Intents                       | Submission planning exists; implementation is not on `main`                                     | See [NEAR submission brief](docs/NEAR_HACKATHON_SUBMISSION.md)                    |
+| NEAR Intents / 1Click              | Adapter and policy code are in this repository; funded onchain execution is unproven             | See [integration status](docs/NEAR_INTENTS_INTEGRATION.md)                         |
+| ClaimBot x402                      | Public smoke verified; no eligible records or payment settlement demonstrated                  | See [production verification](claimbot-x402/PRODUCTION_VERIFICATION.md)           |
+| BasePulse app deployment           | Deployment guides exist; no live production deployment is evidenced here                        | Public URL and deployed commit                                                     |
 
 The dashboard displays stored database records. Its recorded treasury net is **not** represented as a live wallet balance.
 
@@ -44,7 +46,7 @@ Social response:
     {
       "text": "Original post text",
       "sourceUrl": "https://public-source.example/post/123",
-      "publishedAt": "2026-10-23T20:00:00.000Z"
+      "publishedAt": "<current ISO-8601 UTC timestamp>"
     }
   ]
 }
@@ -59,12 +61,12 @@ Metrics response:
   "volumeUSD24h": 0,
   "activeAddresses": 0,
   "transactionCount": 0,
-  "observedAt": "2026-10-23T20:00:00.000Z",
+  "observedAt": "<current ISO-8601 UTC timestamp>",
   "sourceUrl": "https://public-source.example/evidence"
 }
 ```
 
-The numeric values above document the response shape only. BasePulse does not ship them as runtime data.
+The timestamps and numeric values above document the response shape only; replace timestamps with current values before sending. BasePulse does not ship them as runtime data.
 
 ## Base deployment requirements
 
@@ -96,6 +98,7 @@ Arc deployment verification is handled separately by `.github/workflows/arc-veri
 - [Arc microgrant submission facts](docs/ARC_MICROGRANTS_SUBMISSION.md)
 - [NEAR submission brief and incomplete-work disclosure](docs/NEAR_HACKATHON_SUBMISSION.md)
 - [ClaimBot x402 evidence policy](claimbot-x402/README.md)
+- [Grant-review evidence brief](SUBMISSION_GUIDE.md)
 
 ## Security
 
