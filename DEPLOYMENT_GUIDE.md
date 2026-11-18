@@ -30,8 +30,11 @@ pnpm test
 pnpm build
 ```
 
-The root `.env.example` documents the current environment variables. Keep
-credentials out of source control. The autonomous loop is disabled unless
+Trend analysis requires `BUILT_IN_FORGE_API_KEY`; set it in `.env` for local
+development and as a secret in the hosting environment. `BUILT_IN_FORGE_API_URL`
+is an optional base-URL override; if omitted, LLM requests use
+`https://forge.manus.im`. Keep credentials out of source control. The autonomous
+loop is disabled unless
 `BASEPULSE_AGENT_ENABLED=true`; enabling it also requires configured, fresh
 HTTPS social and Base metrics sources, CDP credentials, and valid deployment
 bytecode. Do not enable live operations until inputs, bytecode, spending limits,
