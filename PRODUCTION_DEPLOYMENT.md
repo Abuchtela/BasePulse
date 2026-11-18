@@ -1,6 +1,9 @@
 # BasePulse Production Deployment
 
-This guide is for moving BasePulse off the temporary Manus URL and onto a stable production host.
+This is a hosting runbook, not proof of a live BasePulse deployment. As of
+November 18, 2026, the repository does not link a verified production deployment
+of the main BasePulse application. Before claiming one, record its public URL,
+deployed commit, and health-check result.
 
 ## What changed
 

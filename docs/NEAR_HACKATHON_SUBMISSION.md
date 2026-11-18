@@ -4,7 +4,7 @@
 
 **Primary track:** Autonomous Business  
 **Secondary fit:** Agent Economy; AI Security & Defense; Memecoins With Mechanics  
-**Submission deadline:** November 14, 2026 at 23:59 UTC (5:59 PM CST)  
+**Deadline listed in this draft:** November 14, 2026 at 23:59 UTC (passed as of November 18, 2026; confirm any current program window with the organizer).  
 **Official program:** https://www.near.org/blog/near-hackathon-build-beyond-boundaries
 
 ## One-line pitch
@@ -17,7 +17,7 @@ Autonomous agents can discover opportunities, but giving them unrestricted walle
 
 ## Existing BasePulse foundation
 
-The current repository already contains the Base-side foundation:
+The repository contains these Base-side components:
 
 | Capability               | Existing implementation                                    | NEAR extension                                                            |
 | ------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -28,11 +28,11 @@ The current repository already contains the Base-side foundation:
 | Audit proof              | `contracts/ArcTreasuryProof.sol` and Base transaction logs | Anchor a signed execution receipt after each completed or rejected intent |
 | Operator visibility      | React dashboard and tRPC backend                           | Show quote, approval policy, execution status, and receipt                |
 
-These are verified repository components. NEAR Intents and Chain Signatures are the proposed hackathon extension and must not be presented as complete until the adapter is implemented and tested.
+Code presence is not deployment or usage evidence. The Arc registry is independently verified on Arc mainnet; the repository does not link an end-to-end Base trend-to-token transaction.
 
 ### Current implementation status
 
-The NEAR Intents/1Click adapter, policy gate, durable idempotency ledger, admin tRPC routes, provider-status tracking, and tests are now implemented. See [NEAR Intents Integration](./NEAR_INTENTS_INTEGRATION.md). A live funded swap and NEAR MPC Chain Signatures remain unproven and must not be claimed until verifiable testnet transaction links exist.
+The NEAR Intents/1Click adapter, policy gate, durable idempotency ledger, admin tRPC routes, provider-status tracking, and tests are implemented in this repository. Quotes are simulations by default; live deposits require explicit configuration and a separate wallet transfer. This brief contains no public funded-swap transaction evidence. NEAR MPC Chain Signatures are not implemented. Do not claim a completed cross-chain execution until testnet transactions and a matching public demo are linked.
 
 ## Proposed system
 
@@ -40,7 +40,7 @@ The NEAR Intents/1Click adapter, policy gate, durable idempotency ledger, admin 
 2. **Propose:** The agent creates a typed treasury intent, including asset, amount, destination, purpose, expiry, and maximum slippage.
 3. **Guard:** A deterministic policy engine checks daily budget, per-action cap, allowlisted assets/chains, confidence threshold, cooldown, and emergency pause.
 4. **Quote:** A NEAR Intents adapter requests an executable route.
-5. **Execute:** An approved intent is signed through the NEAR/Chain Signatures integration; raw private keys are never returned to the model.
+5. **Execute (target, not demonstrated):** The current flow requires a separate explicit origin-wallet transfer. Automated signing through NEAR MPC Chain Signatures is not implemented.
 6. **Verify:** BasePulse waits for destination-chain confirmation and records the result.
 7. **Receipt:** The service writes a tamper-evident audit receipt containing the intent hash, policy decision, transaction hash, timestamps, and final status.
 
@@ -80,19 +80,16 @@ A credible working submission must demonstrate one complete testnet flow:
 
 ## Submission description draft
 
-**Proposed submission:** BasePulse would extend its policy-controlled Base work into a cross-chain treasury agent. The target flow is to read current social evidence, create a typed treasury intent, apply deterministic spending, allowlist, expiry, slippage, cooldown, and replay checks, then execute through a NEAR-compatible route and record the receipt. This paragraph describes the intended submission, not completed functionality; the cross-chain execution and receipt path still require public transaction evidence.
+**Draft only:** This project has implemented NEAR Intents/1Click policy, quoting, and status tracking. A funded cross-chain swap, public end-to-end deployment, and transaction-backed receipt are not demonstrated here. Keep this as a proposed submission until those proofs exist.
 
-## Build sequence
+## Remaining proof and delivery work
 
-1. Define `TreasuryIntent`, `PolicyDecision`, and `ExecutionReceipt` schemas.
-2. Implement the deterministic policy evaluator and unit tests.
-3. Implement a NEAR adapter that is disabled by default and test only with real testnet transactions.
-4. Wire the adapter into `autonomousLoop.ts` after trend validation.
-5. Persist intent lifecycle data and expose it through tRPC.
-6. Add dashboard views for pending, rejected, submitted, and confirmed intents.
-7. Run the end-to-end testnet flow and capture transaction evidence.
-8. Publish the deployment and record the demo.
+1. Link the exact deployed revision and public working deployment.
+2. Run and document the full funded testnet flow, including a rejected policy case, an approved action, origin and destination transaction links, and idempotent replay.
+3. Add a dashboard view only if it can show the persisted lifecycle and verifiable receipts.
+4. Implement Chain Signatures only if it is in scope, then document and prove that signer flow separately.
+5. Update the submission text and deadline only after confirming current organizer requirements.
 
 ## Definition of done
 
-The NEAR integration is complete only when a public deployment can execute the testnet flow, the repository tests pass, transaction links are verifiable, and the public demo accurately matches the code. This document alone is submission preparation, not proof that the NEAR integration is already working.
+The adapter code and tests exist, but the integration is not proven operational until a public deployment executes the testnet flow, transaction links are verifiable, and the public demo matches the deployed revision. This file is a draft, not proof of submission or award.

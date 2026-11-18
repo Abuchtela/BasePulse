@@ -1,6 +1,6 @@
 # Circle Arc Microgrants — BasePulse Arc USDC Treasury
 
-> **Status:** Deployed and independently verified on Arc mainnet (chain 5042). Live proof recording demonstrated. This document is a submission aid, **not** evidence of a DoraHacks submission or grant award.
+> **Status snapshot: November 18, 2026.** The registry deployment and proof recording are documented below. This is a submission draft, **not** evidence that an application was submitted, accepted, or awarded.
 
 ## Application fields
 - **Build name:** BasePulse Arc USDC Treasury
@@ -44,5 +44,9 @@ BasePulse Arc USDC Treasury combines real-time blockchain observability with a d
 - Browser-wallet interaction is optional for proof anchoring. Viewing the dashboard is free.
 - Submission and eligibility decisions are handled by DoraHacks/Circle, not by this project or GitHub CI.
 
-## DoraHacks submission
-Open https://dorahacks.io/hackathon/arc-microgrants/detail and submit the build with its live website and the feature-branch source link above. Review the entered fields, then complete final submission under your own DoraHacks account. The program information supplied by the organizer gives a closing deadline of **October 14, 2026 at 23:59 ET**.
+## Application status
+
+The deadline listed in the earlier draft was **October 14, 2026 at 23:59 ET**;
+that date has passed. This repository contains no confirmation of a DoraHacks
+submission or grant decision. Confirm with the organizer whether a current
+application window exists before reusing this draft.

@@ -66,3 +66,21 @@ expected values, but dashboard overrides and RPC/facilitator settings cannot be
 confirmed through the blocked management API. Merge/deploy this repair and run
 the revision-bound CI before calling the PR verified. A 404 empty state does not
 exercise the facilitator, paid response, or settlement path.
+
+## Follow-up: October 25, 2026
+
+The later main-branch production smoke passed against expected commit
+`2c9ed7d47944fc1551dc37907f5d659b1d0bb4b5`. GitHub Actions waited until the
+production `/health` revision matched that commit, then rechecked it after the
+probes. The run verified `/health` and `/config` (200), `/publish.html` and
+`/publisher.js` (200), invalid-project handling (400), and the ClaimBot and
+BasePulse empty states (404). See the
+[revision-bound workflow run](https://github.com/Abuchtela/BasePulse/actions/runs/40165712471)
+and its [job log](https://github.com/Abuchtela/BasePulse/actions/runs/40165712471/job/121086217044).
+
+This supersedes the earlier statement that revision-bound production
+verification was still pending for that main-branch commit. It does not show
+that an eligible opportunity was published, exercise a payment challenge,
+complete a paid request, or prove settlement or receiver balance. The Vercel
+management metadata limitations recorded above also remain unresolved by this
+public HTTP smoke.

@@ -195,9 +195,9 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-slate-700 bg-slate-900/50 mt-20 py-8">
         <div className="max-w-7xl mx-auto px-6 text-center text-slate-400 text-sm">
-          <p>BasePulse - Autonomous Trend-to-Token Engine for Base Ecosystem</p>
+          <p>BasePulse - Evidence-first tooling for verifiable onchain work</p>
           <p className="mt-2">
-            Built for the Base Build OpenClaw Agent Competition
+            Features and deployment status are documented in the repository
           </p>
         </div>
       </footer>
