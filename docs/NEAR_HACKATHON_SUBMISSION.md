@@ -4,7 +4,7 @@
 
 **Primary track:** Autonomous Business  
 **Secondary fit:** Agent Economy; AI Security & Defense; Memecoins With Mechanics  
-**Deadline listed in this draft:** November 14, 2026 at 23:59 UTC (passed as of November 18, 2026; confirm any current program window with the organizer).  
+**Deadline listed in this draft:** November 14, 2026 at 23:59 UTC (passed as of November 18, 2026; confirm any current program window with the organizer).
 **Official program:** https://www.near.org/blog/near-hackathon-build-beyond-boundaries
 
 ## One-line pitch
