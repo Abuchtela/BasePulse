@@ -85,9 +85,20 @@ The deployer does not claim to create liquidity. It records the receipt-derived 
 
 ```bash
 pnpm install
+
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your configuration
+
+# Set up database
+pnpm db:push
+
+# Start BasePulse (development mode)
+pnpm run basepulse
+
+# Verify
 pnpm test
 pnpm check
-pnpm dev
 ```
 
 Arc deployment verification is handled separately by `.github/workflows/arc-verify-deploy.yml` and `scripts/verify-arc-deployment.mjs`.
