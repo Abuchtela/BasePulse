@@ -1,0 +1,1 @@
+ALTER TABLE `treasury_transactions` MODIFY COLUMN `amount` decimal(20,8);

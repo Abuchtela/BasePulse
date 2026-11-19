@@ -1,0 +1,32 @@
+name: ClaimBot x402 production smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'claimbot-x402/**'
+      - '.github/workflows/claimbot-x402-public-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claimbot-x402-production-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SITE: https://claimbot-x402.vercel.app
+      EXPECTED_SHA: ${{ github.sha }}
+      DEPLOY_WAIT_SECONDS: '480'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test smoke assertions
+        run: python3 claimbot-x402/scripts/test-production-smoke.py
+      - name: Verify production revision, config, assets, and unpaid responses
+        run: python3 claimbot-x402/scripts/production-smoke.py

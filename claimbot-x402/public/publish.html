@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ClaimBot · Publish Verified Opportunity</title>
+<style>
+:root{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#e9eefb;background:#0b1224}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 14px 80px;background:radial-gradient(circle at 20% 0,#1d3150,#0b1224 55%);min-height:100vh}
+main{max-width:740px;margin:auto}
+h1{font-size:clamp(25px,5vw,38px);letter-spacing:-.025em;margin:12px 0}p{color:#afc0de;line-height:1.5}
+.pill{font-weight:700;color:#9be3cd;letter-spacing:.06em;font-size:12px}
+.panel{border:1px solid #374463;background:#111d35;border-radius:16px;padding:22px;margin-top:20px;box-shadow:0 12px 30px #03081644}
+label{display:block;margin:16px 0 5px;color:#cfdbef;font-size:14px;font-weight:600}
+input,textarea,select{width:100%;padding:12px;border:1px solid #415273;border-radius:9px;background:#07152c;color:#f5f8ff;font:inherit}
+textarea{min-height:84px;resize:vertical}input:focus,textarea:focus{outline:2px solid #79d2fe}
+button{font:inherit;font-weight:700;padding:12px 18px;background:#77d9ff;color:#07152c;border:0;border-radius:9px;cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+aside{font-size:13px;color:#c5d7ec;background:#19304b;padding:13px 15px;border-radius:10px;margin:12px 0;overflow-wrap:anywhere}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}.two>*{min-width:0}
+.check{display:flex;align-items:flex-start;gap:12px}.check input{width:20px;margin-top:2px}.check label{margin:0;line-height:1.4}
+#status{margin-top:14px;white-space:pre-wrap;overflow-wrap:anywhere}.error{color:#ffa8a8}
+a{color:#9cdbff}@media(max-width:580px){.two{display:block}}
+</style>
+</head>
+<body>
+<main>
+<div class="pill">CLAIMBOT · ARKIV TIRAMISU TESTNET</div>
+<h1>Publish a verified funding opportunity</h1>
+<p>Only the designated publisher wallet can sign records. Your wallet handles signing; this page never asks for or stores a recovery phrase or private key.</p>
+<div class="panel">
+<button type="button" id="connect">Connect publisher wallet</button>
+<aside id="wallet">Required publisher: 0x4aBAf297bd37bb3FA0036b45976A92a46d903688</aside>
+<p>Test GLM is needed to pay the Arkiv network transaction fee. <a href="https://hub.arkiv.network/faucet" target="_blank" rel="noopener noreferrer">Open official testnet faucet</a></p>
+</div>
+<form class="panel" id="opportunity">
+<h2>Source-checked opportunity</h2>
+<p>Use details verified against the organizer's official site. Do not publish closed, invented, or unconfirmed opportunities.</p>
+<label for="id">Unique opportunity ID</label><input id="id" name="id" placeholder="organizer-program-2026" required pattern="[a-zA-Z0-9_\-]{4,80}"/>
+<label for="title">Official title</label><input id="title" name="title" required/>
+<label for="officialSourceUrl">Organizer's official HTTPS link</label><input id="officialSourceUrl" name="officialSourceUrl" type="url" placeholder="https://..." required/>
+<label for="eligibility">Eligibility (one criterion per line)</label><textarea id="eligibility" name="eligibility" required></textarea>
+<div class="two">
+<div><label for="deadline">Exact application deadline</label><input id="deadline" name="deadline" type="datetime-local" required/></div>
+<div><label for="targetProject">Relevant project</label><select id="targetProject" name="targetProject"><option>ClaimBot</option><option>BasePulse</option><option>Both</option></select></div>
+</div>
+<label for="payout">Payout / funding terms</label><input id="payout" name="payout" required placeholder="Example: Up to $15,000 per award"/>
+<label for="fit">Why it fits</label><textarea id="fit" name="fit" required></textarea>
+<label for="smallestNextStep">Smallest credible next step</label><textarea id="smallestNextStep" name="smallestNextStep" required></textarea>
+<div class="check"><input type="checkbox" id="verified" name="verified" required/><label for="verified">I checked the organizer's official source today and confirm this opportunity is accepting applications, including its eligibility, deadline and funding terms.</label></div>
+<div style="margin-top:20px"><button type="submit" id="publish" disabled>Sign &amp; publish on Arkiv testnet</button></div>
+<div id="status" role="status" aria-live="polite">Connect the authorized wallet to continue.</div>
+</form>
+<p style="font-size:13px">After the wallet confirms the Arkiv transaction, the <a href="/api/opportunities?project=ClaimBot">ClaimBot paid API</a> will discover the record automatically. Payment testing stays on Base Sepolia; mainnet is not enabled.</p>
+</main>
+<script type="module" src="/publisher.js"></script>
+</body>
+</html>

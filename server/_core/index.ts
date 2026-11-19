@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { scheduleAutonomousLoop } from "../agent/autonomousLoop";
+import { assertVerifiedSourcesConfigured } from "../agent/verifiedSources";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -48,8 +49,13 @@ async function startServer() {
 
   // ── Registry proxy: /api/registry/* → https://base.org/api/registry/* ──────
   app.use("/api/registry", (req: Request, res: Response) => {
-    const upstreamPath = "/api/registry" + req.path + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const upstreamPath =
+      "/api/registry" +
+      req.path +
+      (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     // Prefer client-supplied Authorization, fall back to server-side Base API key
     if (req.headers["authorization"]) {
       headers["authorization"] = req.headers["authorization"] as string;
@@ -67,7 +73,7 @@ async function startServer() {
       method: req.method,
       headers,
     };
-    const proxy = https.request(options, (upRes) => {
+    const proxy = https.request(options, upRes => {
       res.writeHead(upRes.statusCode || 502, {
         "Content-Type": upRes.headers["content-type"] || "application/json",
         "Access-Control-Allow-Origin": "*",
@@ -111,18 +117,29 @@ async function startServer() {
   });
 
   if (process.env.BASEPULSE_AGENT_ENABLED === "true") {
-    // Start the autonomous agent loop only when explicitly enabled.
-    // This prevents accidental token deployments when hosting the dashboard.
+    // Refuse to start the execution loop unless both live evidence sources are
+    // explicitly configured. There is no generated or fallback data path.
+    assertVerifiedSourcesConfigured();
     scheduleAutonomousLoop({
       enabled: true,
-      intervalMinutes: parseInt(process.env.BASEPULSE_AGENT_INTERVAL_MINUTES || "15"),
-      minSentimentScore: parseInt(process.env.BASEPULSE_MIN_SENTIMENT_SCORE || "60"),
+      intervalMinutes: parseInt(
+        process.env.BASEPULSE_AGENT_INTERVAL_MINUTES || "15"
+      ),
+      minSentimentScore: parseInt(
+        process.env.BASEPULSE_MIN_SENTIMENT_SCORE || "60"
+      ),
       minMentions: parseInt(process.env.BASEPULSE_MIN_MENTIONS || "5"),
-      minVolume24hUSD: parseInt(process.env.BASEPULSE_MIN_VOLUME_24H_USD || "100000"),
-      maxDeploymentsPerDay: parseInt(process.env.BASEPULSE_MAX_DEPLOYMENTS_PER_DAY || "10"),
+      minVolume24hUSD: parseInt(
+        process.env.BASEPULSE_MIN_VOLUME_24H_USD || "100000"
+      ),
+      maxDeploymentsPerDay: parseInt(
+        process.env.BASEPULSE_MAX_DEPLOYMENTS_PER_DAY || "10"
+      ),
     });
   } else {
-    console.log("BasePulse autonomous agent loop is disabled. Set BASEPULSE_AGENT_ENABLED=true to enable it.");
+    console.log(
+      "BasePulse autonomous agent loop is disabled. Set BASEPULSE_AGENT_ENABLED=true to enable it."
+    );
   }
 }
 
