@@ -15,6 +15,27 @@
       "when": 1770010744501,
       "tag": "0001_cold_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1792544100652,
+      "tag": "0002_fixed_solo",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1793014804094,
+      "tag": "0003_fluffy_talisman",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1793014969235,
+      "tag": "0004_tan_ben_urich",
+      "breakpoints": true
     }
   ]
 }
