@@ -379,6 +379,11 @@ export default function PulseIndex() {
                     ))}
                   </CardContent>
                 </Card>
+                <ul className="space-y-2 rounded-lg border border-amber-900 bg-amber-950/30 p-4 text-sm text-amber-200">
+                  {plan.warnings.map(warning => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
               </>
             )}
           </div>
