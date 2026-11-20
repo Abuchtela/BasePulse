@@ -152,6 +152,7 @@ export default function PulseIndex() {
                       type="number"
                       min={10}
                       max={1_000_000}
+                      step={0.01}
                       value={budgetUsd}
                       onChange={event =>
                         setBudgetUsd(Number(event.target.value))
