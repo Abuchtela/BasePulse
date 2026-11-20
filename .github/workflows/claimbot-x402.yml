@@ -11,6 +11,9 @@ on:
       - 'claimbot-x402/**'
       - '.github/workflows/claimbot-x402.yml'
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
