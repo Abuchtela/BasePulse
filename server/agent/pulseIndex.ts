@@ -121,12 +121,22 @@ const riskTarget: Record<PortfolioRequest["riskLevel"], number> = {
 };
 
 function isExcluded(asset: Asset, exclusions: string[]) {
-  const searchable = [asset.symbol, asset.name, ...asset.keywords]
-    .join(" ")
+  const searchable = [
+    asset.symbol,
+    asset.name,
+    ...asset.themes,
+    ...asset.keywords,
+  ]
+    .join(" | ")
     .toLowerCase();
-  return exclusions.some(exclusion =>
-    searchable.includes(exclusion.toLowerCase())
-  );
+  return exclusions.some(exclusion => {
+    const escaped = exclusion
+      .toLowerCase()
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`).test(
+      searchable
+    );
+  });
 }
 
 function scoreAsset(asset: Asset, request: PortfolioRequest) {
