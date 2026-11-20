@@ -232,8 +232,12 @@ export function createPortfolioPlan(
     const matchedThemes = asset.themes.filter(theme =>
       themeSet.includes(theme)
     );
+    const riskNote =
+      asset.risk === riskTarget[request.riskLevel]
+        ? `with a risk profile aligned to ${request.riskLevel}`
+        : `although its risk level differs from the ${request.riskLevel} target`;
     const rationale = matchedThemes.length
-      ? `Matches ${matchedThemes.join(" and ")} preferences with a risk profile aligned to ${request.riskLevel}.`
+      ? `Matches ${matchedThemes.join(" and ")} preferences ${riskNote}.`
       : `Adds diversification while staying within the ${request.maxPositionPercent}% position limit.`;
 
     return {
