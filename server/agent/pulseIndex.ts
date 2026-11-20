@@ -228,6 +228,8 @@ export function createPortfolioPlan(
   }
 
   const isUsPerson = request.countryCode === "US";
+  const budgetCents = Math.round(request.budgetUsd * 100);
+  let allocatedCents = 0;
   const holdings = candidates.map((asset, index) => {
     const matchedThemes = asset.themes.filter(theme =>
       themeSet.includes(theme)
@@ -240,13 +242,18 @@ export function createPortfolioPlan(
       ? `Matches ${matchedThemes.join(" and ")} preferences ${riskNote}.`
       : `Adds diversification while staying within the ${request.maxPositionPercent}% position limit.`;
 
+    const targetCents = Math.floor((budgetCents * weights[index]) / 100);
+    const amountCents =
+      index === candidates.length - 1
+        ? budgetCents - allocatedCents
+        : targetCents;
+    allocatedCents += amountCents;
+
     return {
       symbol: asset.symbol,
       name: asset.name,
       weightPercent: weights[index],
-      amountUsd: Number(
-        ((request.budgetUsd * weights[index]) / 100).toFixed(2)
-      ),
+      amountUsd: Number((amountCents / 100).toFixed(2)),
       rationale,
       tokenStatus: "simulation-only" as const,
     };

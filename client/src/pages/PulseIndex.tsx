@@ -189,6 +189,7 @@ export default function PulseIndex() {
                           key={risk}
                           type="button"
                           onClick={() => setRiskLevel(risk)}
+                          aria-pressed={riskLevel === risk}
                           className={`rounded-lg border px-2 py-2 text-xs capitalize transition ${
                             riskLevel === risk
                               ? "border-cyan-500 bg-cyan-500/10 text-cyan-200"
@@ -210,6 +211,7 @@ export default function PulseIndex() {
                         key={theme.value}
                         type="button"
                         onClick={() => toggleTheme(theme.value)}
+                        aria-pressed={themes.includes(theme.value)}
                         className={`rounded-full border px-3 py-1.5 text-xs transition ${
                           themes.includes(theme.value)
                             ? "border-violet-500 bg-violet-500/10 text-violet-200"
