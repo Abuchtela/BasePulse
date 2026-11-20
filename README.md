@@ -1,6 +1,6 @@
 # BasePulse
 
-BasePulse is an evidence-first Base agent project. Its repository contains a Base token-deployment path, a fail-closed trend-analysis loop, an Arc mainnet proof registry and read-only treasury tools, a Base Registry browser, and ClaimBot payment/data components.
+BasePulse is an evidence-first Base agent project. Its repository contains a Base token-deployment path, a fail-closed trend-analysis loop, an Arc mainnet proof registry and read-only treasury tools, a Base Registry browser, and ClaimBot payment/data components. PulseIndex is an isolated, simulation-only portfolio planner documented in [PULSEINDEX_AGENT.md](./PULSEINDEX_AGENT.md).
 
 ## Verified status
 

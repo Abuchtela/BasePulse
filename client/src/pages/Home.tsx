@@ -1,8 +1,16 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
-import { TrendingUp, Zap, BarChart3, Shield } from "lucide-react";
+import {
+  TrendingUp,
+  Zap,
+  BarChart3,
+  Shield,
+  Bot,
+  ArrowRight,
+} from "lucide-react";
 
 export default function Home() {
   const loginUrl = getLoginUrl();
@@ -19,6 +27,13 @@ export default function Home() {
             <h1 className="text-2xl font-bold">BasePulse</h1>
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              onClick={() => navigate("/pulseindex")}
+              variant="outline"
+              className="border-cyan-800 text-cyan-300 hover:bg-cyan-950"
+            >
+              PulseIndex
+            </Button>
             <Button
               onClick={() => navigate("/registry")}
               variant="outline"
@@ -134,6 +149,48 @@ export default function Home() {
               collection and reinvestment are not implemented or represented as
               complete.
             </p>
+          </div>
+        </div>
+
+        {/* Agent Network */}
+        <div className="mb-16 rounded-2xl border border-cyan-900/70 bg-cyan-950/20 p-8">
+          <div className="mb-6 flex items-center gap-3">
+            <Bot className="h-6 w-6 text-cyan-400" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">
+                BasePulse Agent Network
+              </p>
+              <h3 className="text-2xl font-bold">
+                A second agent, without replacing the first.
+              </h3>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+              <Badge className="mb-3 bg-blue-950 text-blue-300">
+                Agent 01 · Active
+              </Badge>
+              <h4 className="mb-2 text-lg font-semibold">Trend Launch Agent</h4>
+              <p className="text-sm leading-6 text-slate-400">
+                The original autonomous trend-to-token workflow remains intact.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/pulseindex")}
+              className="group rounded-xl border border-cyan-800 bg-slate-900/70 p-5 text-left transition hover:border-cyan-500"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <Badge className="bg-cyan-950 text-cyan-300">
+                  Agent 02 · Prototype
+                </Badge>
+                <ArrowRight className="h-4 w-4 text-cyan-400 transition group-hover:translate-x-1" />
+              </div>
+              <h4 className="mb-2 text-lg font-semibold">PulseIndex Agent</h4>
+              <p className="text-sm leading-6 text-slate-400">
+                Turns user rules into transparent, policy-checked simulated
+                equity portfolios.
+              </p>
+            </button>
           </div>
         </div>
 

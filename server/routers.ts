@@ -4,11 +4,21 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
-import { getDeployedTokens, getTrendAnalysis, getTreasuryBalance, getSocialInteractions } from "./db";
+import {
+  getDeployedTokens,
+  getTrendAnalysis,
+  getTreasuryBalance,
+  getSocialInteractions,
+} from "./db";
 import { ENV } from "./_core/env";
+import {
+  createPortfolioPlan,
+  portfolioRequestSchema,
+  pulseIndexDemoUniverse,
+} from "./agent/pulseIndex";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   arc: arcRouter,
   near: nearRouter,
@@ -52,6 +62,12 @@ export const appRouter = router({
         hasApiKey: !!ENV.baseApiKey,
         hasBuilderCode: !!ENV.baseBuilderCode,
       })),
+    }),
+    pulseindex: router({
+      universe: publicProcedure.query(() => pulseIndexDemoUniverse),
+      plan: publicProcedure
+        .input(portfolioRequestSchema)
+        .mutation(({ input }) => createPortfolioPlan(input)),
     }),
   }),
 });
