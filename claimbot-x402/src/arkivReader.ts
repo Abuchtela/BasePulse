@@ -12,7 +12,8 @@ interface Opportunity {
   title: string;
   officialSourceUrl: string;
   eligibility: string[];
-  deadline: string;
+  deadline: string | null;
+  deadlineType?: "dated" | "not-published";
   payout: string;
   fit: string;
   smallestNextStep: string;
@@ -36,10 +37,13 @@ export function isPayableOpportunity(o: unknown, target: Project, now: Date): o 
   try {
     if (new URL(v.officialSourceUrl).protocol !== "https:") return false;
   } catch { return false; }
-  if (!isText(v.deadline) || !isText(v.verifiedAt)) return false;
-  const deadline = Date.parse(v.deadline);
+  if (!isText(v.verifiedAt)) return false;
+  const deadlineValid = v.deadlineType === "not-published"
+    ? v.deadline === null
+    : (v.deadlineType === undefined || v.deadlineType === "dated") && isText(v.deadline) &&
+      Number.isFinite(Date.parse(v.deadline)) && Date.parse(v.deadline) > now.valueOf();
   const verified = Date.parse(v.verifiedAt);
-  return Number.isFinite(deadline) && deadline > now.valueOf() &&
+  return deadlineValid &&
     Number.isFinite(verified) && verified <= now.valueOf() &&
     verified >= now.valueOf() - MAX_VERIFICATION_AGE_MS;
 }

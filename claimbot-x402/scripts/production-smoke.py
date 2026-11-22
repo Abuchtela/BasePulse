@@ -74,6 +74,17 @@ def main():
     status, _, body = request('/config')
     assert status == 200
     check_config(json.loads(body))
+    status, _, body = request('/')
+    assert status == 200 and b'Connect wallet &amp; buy report' in body
+    status, _, body = request('/buyer.js')
+    assert status == 200 and b'AuthorizationUsed' in body
+    status, headers, body = request('/api/opportunities/preview?project=BasePulse')
+    assert status == 200 and not headers.get('payment-required')
+    preview = json.loads(body)
+    assert isinstance(preview['count'], int) and preview['count'] >= 0
+    assert all(set(item) == {'id', 'title'} for item in preview['opportunities'])
+    status, _, body = request('/publisher-draft')
+    assert status == 200 and json.loads(body)['status'] == 'unsigned-draft'
     status, _, body = request('/publish.html')
     assert status == 200
     assert b'Connect publisher wallet' in body

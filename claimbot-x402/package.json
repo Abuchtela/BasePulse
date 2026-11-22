@@ -11,7 +11,9 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "probe:arkiv": "tsx src/probe.ts",
-    "build:publisher": "npx --yes esbuild@0.28.0 web/publisher.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=public/publisher.js --minify && node scripts/embed-publisher.mjs"
+    "build:publisher": "esbuild web/publisher.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=public/publisher.js --minify && node scripts/embed-publisher.mjs",
+    "build:checkout": "node scripts/build-checkout.mjs",
+    "build:browser": "npm run build:publisher && npm run build:checkout"
   },
   "dependencies": {
     "@x402/core": "^2.28.0",
@@ -24,6 +26,7 @@
     "viem": "^2.38.2"
   },
   "devDependencies": {
+    "esbuild": "0.28.0",
     "@types/express": "^5.0.0",
     "@types/node": "^24.7.2"
   }

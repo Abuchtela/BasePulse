@@ -1,0 +1,19 @@
+{
+  "id": "arbitrum-mentorship-cohort2-2026-11-22",
+  "title": "Arbitrum Mentorship Program — Cohort 2",
+  "officialSourceUrl": "https://blog.arbitrum.foundation/arbitrum-mentorship-program-cohort-2-applications-now-open/",
+  "eligibility": [
+    "Early-stage teams with a working prototype, MVP, testnet deployment or early live product.",
+    "Commit to launching or scaling on Arbitrum One or Robinhood Chain; an existing deployment there is not required.",
+    "Selection, KYC, sanctions screening and program agreements apply."
+  ],
+  "deadline": "2026-12-06",
+  "deadlineType": "dated",
+  "payout": "$100,000 total prizes for top-performing teams, plus mentorship and investor access. No guaranteed per-team award or investment.",
+  "fit": "BasePulse and ClaimBot provide agent and x402 prototypes. Fit is conditional on a concrete Arbitrum or Robinhood Chain commitment; acceptance is unconfirmed.",
+  "smallestNextStep": "Review the official article and linked application at https://tally.so/r/Xx6xqO . Prepare the demo, GitHub and an Arbitrum integration milestone. The organizer gives December 6 without a closing time or timezone; confirm those before applying.",
+  "targetProject": "Both",
+  "region": "other",
+  "status": "open",
+  "verifiedAt": "2026-11-22T23:09:30.000Z"
+}
