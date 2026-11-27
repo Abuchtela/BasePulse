@@ -7,6 +7,7 @@ import { loadPaidOpportunities, RequestPreflightError } from "./preflight.js";
 import { resolvePayoutAddress } from "./payout.js";
 import { resolveArkivPublisherAddress } from "./publisher.js";
 import { PUBLISHER_JS } from "./publisherBundle.js";
+import { BUYER_JS, CHECKOUT_HTML, PUBLISHER_HTML, PUBLISHER_DRAFT } from "./checkoutBundle.js";
 
 const payTo = resolvePayoutAddress(process.env.X402_PAY_TO);
 const publisher = resolveArkivPublisherAddress(process.env.ARKIV_TRUSTED_PUBLISHER);
@@ -32,9 +33,33 @@ const resourceServer = new x402ResourceServer(facilitator)
   .register(network, new ExactEvmScheme());
 const app = express();
 app.disable("x-powered-by");
+app.use((_req,res,next)=>{
+  res.setHeader("X-Content-Type-Options","nosniff");
+  res.setHeader("Referrer-Policy","no-referrer");
+  res.setHeader("Cache-Control","no-store");
+  next();
+});
+app.get(["/", "/index.html"],(_req,res)=>res.type("html").send(CHECKOUT_HTML));
+app.get("/publish.html",(_req,res)=>res.type("html").send(PUBLISHER_HTML));
+app.get("/buyer.js",(_req,res)=>res.type("text/javascript").send(BUYER_JS));
+app.get("/publisher-draft",(_req,res)=>res.json({
+  status:"unsigned-draft", checkedAt:PUBLISHER_DRAFT.verifiedAt, opportunity:PUBLISHER_DRAFT,
+}));
 app.get("/config", (_req,res) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({publisher, payTo, network, signingNetwork:"Arkiv Tiramisu"});
+  const amount = String(Math.round(Number(price.slice(1)) * 1_000_000));
+  res.json({publisher, payTo, network, price, amount, signingNetwork:"Arkiv Tiramisu"});
+});
+app.get("/api/opportunities/preview",async(req,res)=>{
+  try {
+    const report = await loadPaidOpportunities(req.query.project,target=>
+      queryTrustedOpenOpportunities(target,publisher,process.env.ARKIV_RPC_URL));
+    res.json({project:report.project,count:report.count,opportunities:report.results.map(record=>({id:record.opportunity.id,title:record.opportunity.title}))});
+  } catch(error) {
+    if(error instanceof RequestPreflightError && error.status===404) res.json({count:0,opportunities:[]});
+    else if(error instanceof RequestPreflightError) res.status(error.status).json({error:error.message});
+    else res.status(503).json({error:"Verified opportunity data temporarily unavailable"});
+  }
 });
 app.get("/publisher.js", (_req, res) => {
   if (!PUBLISHER_JS) {res.status(503).send("Publisher bundle has not been built"); return;}

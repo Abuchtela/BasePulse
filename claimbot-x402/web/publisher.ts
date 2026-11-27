@@ -25,6 +25,27 @@ const walletNode = document.querySelector("#wallet") as HTMLElement;
 const form = document.querySelector("#opportunity") as HTMLFormElement;
 
 let account: `0x${string}` | null = null;
+const deadlineType = form.elements.namedItem("deadlineType") as HTMLSelectElement;
+const deadlineInput = form.elements.namedItem("deadline") as HTMLInputElement;
+deadlineType.addEventListener("change", () => {
+  deadlineInput.required = deadlineType.value === "dated";
+  deadlineInput.disabled = deadlineType.value !== "dated";
+  if (deadlineInput.disabled) deadlineInput.value = "";
+});
+document.querySelector("#load-draft")?.addEventListener("click", async () => {
+  try {
+    const response = await fetch("/publisher-draft", {cache:"no-store"});
+    if (!response.ok) throw new Error("Could not load the source-checked draft.");
+    const { opportunity, checkedAt } = await response.json();
+    for (const [name, value] of Object.entries(opportunity)) {
+      const input = form.elements.namedItem(name) as HTMLInputElement | null;
+      if (input && name !== "verified") input.value = Array.isArray(value) ? value.join("\n") : String(value ?? "");
+    }
+    deadlineType.dispatchEvent(new Event("change"));
+    (form.elements.namedItem("verified") as HTMLInputElement).checked = false;
+    status(`Draft source checked ${checkedAt}. Open the official source and confirm it is still accepting applications before signing. This draft has not been published.`);
+  } catch (error) { status(error instanceof Error ? error.message : String(error), true); }
+});
 publisherConfig.then(publisher => { walletNode.textContent = "Required publisher: " + publisher; }).catch(error => {
   connectButton.disabled = true;
   status(error instanceof Error ? error.message : String(error), true);
@@ -95,9 +116,10 @@ form.addEventListener("submit", async event => {
     await ensureArkiv(wallet);
     const source = new URL(field("officialSourceUrl"));
     if (source.protocol !== "https:") throw new Error("Official source must be HTTPS.");
-    const deadline = new Date(field("deadline"));
+    const noPublishedDeadline = field("deadlineType") === "not-published";
+    const deadline = noPublishedDeadline ? null : new Date(field("deadline"));
     const now = new Date();
-    if (Number.isNaN(deadline.valueOf()) || deadline <= now) throw new Error("Deadline must be in the future.");
+    if (!noPublishedDeadline && (!deadline || Number.isNaN(deadline.valueOf()) || deadline <= now)) throw new Error("Deadline must be in the future.");
     const eligibility = field("eligibility").split("\n").map(x=>x.trim()).filter(Boolean);
     if (!eligibility.length) throw new Error("At least one eligibility requirement is needed.");
     const confirmation = form.elements.namedItem("verified") as HTMLInputElement;
@@ -106,9 +128,10 @@ form.addEventListener("submit", async event => {
     if (!["ClaimBot","BasePulse","Both"].includes(target)) throw new Error("Invalid target project.");
     const record = {
       id:field("id"), title:field("title"), officialSourceUrl:source.toString(),
-      eligibility, deadline:deadline.toISOString(),
+      eligibility, deadline:deadline ? field("deadline") : null,
+      deadlineType:noPublishedDeadline ? "not-published" as const : "dated" as const,
       payout:field("payout"), fit:field("fit"), smallestNextStep:field("smallestNextStep"),
-      targetProject:target, region:"global" as const, status:"open" as const, verifiedAt:now.toISOString(),
+      targetProject:target, region:"other" as const, status:"open" as const, verifiedAt:now.toISOString(),
     };
     if (!/^[a-zA-Z0-9_-]{4,80}$/.test(record.id)) throw new Error("Opportunity ID must be 4–80 letters, numbers, underscores or hyphens.");
     if (!record.id || !record.title || !record.payout || !record.fit || !record.smallestNextStep) {
@@ -132,14 +155,17 @@ form.addEventListener("submit", async event => {
       payload: jsonToPayload(record), contentType:"application/json",
       attributes: {
         project:str("claimbot"), entity_type:str("funding_opportunity"), schema_version:i32(1),
-        opportunity_id:str(record.id), status:str("open"), region:str("global"),
+        opportunity_id:str(record.id), status:str("open"), region:str(record.region),
         target_project:str(target.toLowerCase()),
-        deadline_at:u64(BigInt(deadline.valueOf())), verified_at:u64(BigInt(now.valueOf())),
+        ...(deadline ? {deadline_at:u64(BigInt(deadline.valueOf()))} : {deadline_type:str("not-published")}),
+        verified_at:u64(BigInt(now.valueOf())),
       },
       expires:ExpirationTime.fromDays(14),
       flags: { readonly: true, permissionlessExtension: false },
     });
-    status("Submitted on Arkiv. Entity: " + String(created.entityKey) + "; Tx: " + String(created.txHash) + ". Check /api/opportunities?project=ClaimBot after confirmation.");
+    const confirmed = await read.getEntity(created.entityKey);
+    if (confirmed.owner.toLowerCase() !== account.toLowerCase()) throw new Error("Published record owner did not match the authorized wallet.");
+    status("Published and read back from Arkiv. Entity: " + String(created.entityKey) + "; Tx: " + String(created.txHash) + ". Open checkout to buy the report.");
     console.info("Arkiv submission", {entityKey:created.entityKey,txHash:created.txHash});
   } catch (error) {
     status(error instanceof Error ? error.message : String(error), true);

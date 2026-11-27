@@ -2,6 +2,7 @@
 **/node_modules
 .pnpm-store/
 package-lock.json
+!claimbot-x402/package-lock.json
 
 # Build outputs
 dist/
@@ -59,6 +60,7 @@ jspm_packages/
 
 # TypeScript cache
 *.tsbuildinfo
+claimbot-x402/public/publisher.js
 
 # Optional npm cache directory
 .npm

@@ -1,5 +1,45 @@
 # ClaimBot x402 verified opportunities API
 
+## Buyer checkout and receipt verification
+
+Open `/` to inspect report availability, connect a browser wallet and buy a report.
+Checkout accepts at most 0.10 USDC and pins the report URL, network, recipient,
+USDC contract, exact amount and signing domain before requesting an EIP-3009
+signature. Base Sepolia remains the default; test USDC is not revenue.
+
+The paid response must include an x402 settlement transaction. The browser then
+reads its mined receipt from the selected Base network and verifies both the
+USDC `Transfer` event (payer, recipient, amount) and `AuthorizationUsed` event
+(payer and the unique signed nonce). A facilitator success alone is not marked
+onchain verified. Download the report and receipt before closing the page.
+The SHA-256 digest identifies the downloaded report bytes; the content is not
+committed onchain. There is no durable purchase history or server-side report
+recovery yet. After a submission with an unknown outcome, checkout stops and
+shows the authorization details instead of retrying or charging again.
+
+`/api/opportunities/preview?project=BasePulse` exposes titles and IDs only.
+Zero signed records disables checkout. `/publisher-draft` supplies a public,
+unsigned research draft; it never substitutes for a trusted Arkiv record.
+The verified draft is Arbitrum Mentorship Cohort 2 (official article and linked
+application checked November 22, 2026). Fit depends on an Arbitrum/Robinhood
+Chain commitment. The Base Builder Grant candidate was excluded because its
+linked official application said Round 2 was closed, despite its documentation.
+
+Publisher workflow: open `/publish.html`, load the verified draft, review its
+official sources, connect the designated publisher, and sign the Arkiv record.
+The page reads the entity back before reporting publication. It requires test
+GLM for the network fee. Then return to `/` and use Base Sepolia test USDC for
+the paid request. These wallet signatures must be provided by the wallet owner.
+
+Records can explicitly specify `deadlineType: "not-published"` and
+`deadline: null` when the official source gives no closing date. They still
+require source verification within seven days. Dated records without a closing
+time stop selling conservatively at the beginning of the date in UTC.
+
+Build committed browser assets with `npm run build:browser --prefix claimbot-x402`.
+CI rebuilds them and rejects a mismatch. Tests use isolated unit vectors;
+passing them does not establish a real payment or Arkiv publication.
+
 The seller responds with **real, trusted-publisher Arkiv records**, not mock opportunities.
 It filters for eligible, unexpired, HTTPS-source opportunities.
 

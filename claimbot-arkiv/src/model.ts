@@ -10,7 +10,8 @@ export type Opportunity = {
   title: string;
   officialSourceUrl: string;
   eligibility: string[];
-  deadline: string;
+  deadline: string | null;
+  deadlineType?: "dated" | "not-published";
   payout: string;
   fit: string;
   smallestNextStep: string;
@@ -31,9 +32,12 @@ export function validateOpportunity(input: Opportunity, now = new Date()): Oppor
   if (officialSource.protocol !== "https:") throw new Error("officialSourceUrl must use HTTPS");
   if (input.eligibility.length === 0) throw new Error("eligibility must not be empty");
 
-  const deadline = new Date(input.deadline);
-  if (Number.isNaN(deadline.valueOf())) throw new Error("deadline must be a valid ISO date");
-  if (deadline <= now) throw new Error("deadline must be in the future");
+  const noPublishedDeadline = input.deadlineType === "not-published" && input.deadline === null;
+  if (input.deadlineType && !["dated", "not-published"].includes(input.deadlineType)) throw new Error("Invalid deadline type");
+  const deadline = input.deadline ? new Date(input.deadline) : null;
+  if (!noPublishedDeadline && (!deadline || Number.isNaN(deadline.valueOf()))) throw new Error("deadline must be a valid ISO date, or explicitly not-published with a null date");
+  if (!noPublishedDeadline && deadline! <= now) throw new Error("deadline must be in the future");
+  if (input.deadlineType === "not-published" && input.deadline !== null) throw new Error("Unpublished deadline must be null");
 
   const verifiedAt = new Date(input.verifiedAt);
   if (Number.isNaN(verifiedAt.valueOf())) throw new Error("verifiedAt must be a valid ISO date");
@@ -44,7 +48,7 @@ export function validateOpportunity(input: Opportunity, now = new Date()): Oppor
     title: requireText(input.title, "title"),
     officialSourceUrl: officialSource.toString(),
     eligibility: input.eligibility.map((item) => requireText(item, "eligibility item")),
-    deadline: deadline.toISOString(),
+    deadline: noPublishedDeadline ? null : deadline!.toISOString(),
     payout: requireText(input.payout, "payout"),
     fit: requireText(input.fit, "fit"),
     smallestNextStep: requireText(input.smallestNextStep, "smallestNextStep"),
@@ -69,7 +73,7 @@ export function opportunityEntityParameters(
       status: str(opportunity.status),
       region: str(opportunity.region),
       target_project: str(opportunity.targetProject.toLowerCase()),
-      deadline_at: u64(BigInt(new Date(opportunity.deadline).valueOf())),
+      ...(opportunity.deadline ? { deadline_at: u64(BigInt(new Date(opportunity.deadline).valueOf())) } : { deadline_type: str("not-published") }),
       verified_at: u64(BigInt(new Date(opportunity.verifiedAt).valueOf())),
     },
     expires: ExpirationTime.fromDays(60),
@@ -84,7 +88,8 @@ export function isEligibleAndOpen(
 ): boolean {
   return (
     opportunity.status === "open" &&
-    new Date(opportunity.deadline) > now &&
+    (opportunity.deadlineType === "not-published" && opportunity.deadline === null ||
+      typeof opportunity.deadline === "string" && new Date(opportunity.deadline) > now) &&
     (opportunity.targetProject === target || opportunity.targetProject === "Both")
   );
 }

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClaimBot — verified funding reports</title>
+<style>
+:root{font-family:system-ui,sans-serif;background:#0b1224;color:#e9eefb}*{box-sizing:border-box}body{margin:0;padding:32px 18px}main{max-width:800px;margin:auto}h1{font-size:clamp(30px,6vw,48px);letter-spacing:-.04em;line-height:1.1}h2{font-size:22px}p,li{line-height:1.6;color:#bdcde5}.panel{background:#111d35;border:1px solid #374463;padding:24px;border-radius:16px;margin:20px 0}.tag{color:#9be3cd;font-weight:700;font-size:13px;letter-spacing:.08em}button,select{font:inherit;border-radius:8px;padding:12px 16px}button{background:#77d9ff;color:#07152c;border:0;font-weight:700;cursor:pointer;margin:6px 6px 6px 0}button:disabled{opacity:.45;cursor:not-allowed}select{background:#07152c;color:#fff;border:1px solid #415273}label{display:block;margin:12px 0 5px}a{color:#9cdbff}pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#d9e7fc;font-size:13px}#status{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}.error{color:#ffa8a8}article{border-top:1px solid #374463;margin-top:18px;padding-top:12px}[hidden]{display:none!important}.small{font-size:13px}#receipt a{overflow-wrap:anywhere}
+</style></head><body><main>
+<div class="tag">CLAIMBOT · BASEPULSE</div>
+<h1>Find your next funding opportunity.</h1>
+<p>Get source-checked eligibility, funding terms and a concrete next step. Pay once for a report, then verify the payment onchain.</p>
+<section class="panel"><h2>Choose your project</h2>
+<label for="project">Report for</label><select id="project"><option>BasePulse</option><option>ClaimBot</option></select>
+<p id="network">Checking payment network…</p><p id="availability">Checking current opportunities…</p>
+<div id="titles"></div>
+<button id="refresh">Check opportunities</button><button id="buy" disabled>Connect wallet &amp; buy report</button>
+<p id="status" role="status" aria-live="polite">Loading…</p>
+<p class="small">You review the exact amount and receiver before signing. An empty report never requests payment. No token approvals are requested.</p>
+</section>
+<section id="report" class="panel" hidden><h2>Your funding report</h2><div id="results"></div></section>
+<section id="receipt" class="panel" hidden><h2>Payment receipt</h2><div id="receipt-content"></div><button id="verify" disabled>Verify payment again</button><button id="download" disabled>Download report &amp; receipt</button><p class="small">The onchain check proves the USDC transfer and authorization nonce. The report digest identifies your downloaded report; its content is not anchored onchain. Save the download before closing this page.</p></section>
+<p class="small">Publisher tools: <a href="/publish.html">publish a source-checked opportunity</a>. Funding eligibility and awards are determined by the organizer.</p>
+</main><script type="module" src="/buyer.js"></script></body></html>

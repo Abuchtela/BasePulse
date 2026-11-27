@@ -31,9 +31,13 @@ jobs:
           npm run typecheck --prefix claimbot-arkiv
           npm test --prefix claimbot-arkiv
       - name: Install x402 seller package
-        run: npm install --prefix claimbot-x402 --no-audit --no-fund
+        run: npm ci --prefix claimbot-x402 --no-audit --no-fund
       - name: Check x402 seller types
         run: npm run check --prefix claimbot-x402
+      - name: Verify committed browser assets match their sources
+        run: |
+          npm run build:browser --prefix claimbot-x402
+          git diff --exit-code -- claimbot-x402/src/publisherBundle.ts claimbot-x402/src/checkoutBundle.ts
       - name: Verify precompiled publisher wallet code
         run: node --experimental-strip-types --input-type=module -e 'import("./claimbot-x402/src/publisherBundle.ts").then(m => { if(m.PUBLISHER_JS.length < 10000 || !m.PUBLISHER_JS.includes("eth_requestAccounts")) process.exit(1) })'
       - name: Run all x402 tests
